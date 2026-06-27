@@ -32,10 +32,10 @@
    - [Prerequisites](#prerequisites)
    - [Installation](#installation)
 5. [Quick Start](#quick-start)
-6. [API Reference](#api-reference)
-7. [Project Structure](#project-structure)
-8. [Testing](#testing)
-9. [Deployment](#deployment)
+6. [Documentation](#documentation)
+7. [API Reference](#api-reference)
+8. [Project Structure](#project-structure)
+9. [Releases and Deployment](#releases-and-deployment)
 10. [Roadmap](#roadmap)
 11. [Contributing](#contributing)
 12. [Code of Conduct](#code-of-conduct)
@@ -126,6 +126,10 @@ console.log(bedwars.solo.wins, bedwars.solo.kills); // raw, no ratios
 
 Each parser returns a readonly, fully-typed object. Game-mode parsers return `null` when the player has never touched that mode.
 
+## Documentation
+
+The full reference lives at **[the documentation site](https://breezil.github.io/Breezil-Hypixel-Parsers/)**: every export, its type, every field, and the endpoint-to-parser map, organized by domain. The section below is the overview; the docs leave nothing out.
+
 ## API Reference
 
 Every export is a pure function: raw Hypixel JSON in, a readonly fully-typed object out. There is no client, no config, and no state. The library is strict-raw: it mirrors the API field-for-field and does zero computation (no ratios, no levels-from-xp, no derived totals); computed values belong in a wrapper built on top.
@@ -165,26 +169,24 @@ Breezil-Hypixel-Parsers/
 └─ package.json
 ```
 
-## Testing
+## Releases and Deployment
 
-There is no automated test suite yet. The parsers are pure functions, which makes them straightforward to unit test, and a suite is planned. Contributions that add tests are very welcome.
+Two things ship automatically from this repo, so there is no manual deploy step.
 
-## Deployment
+**Documentation.** The docs site rebuilds and deploys to GitHub Pages on every push to `main`, via `.github/workflows/docs.yml`. Merge to `main` and the site updates on its own.
 
-This package publishes to npm as [`@breezil/hypixel-parsers`](https://www.npmjs.com/package/@breezil/hypixel-parsers). Releases follow [Semantic Versioning](https://semver.org).
+**npm package.** Publishing to npm is automated by `.github/workflows/publish.yml`, which runs when a GitHub Release is published. Releases follow [Semantic Versioning](https://semver.org). To cut one:
 
-```bash
-npm run build   # tsc -b, emits dist/
-npm publish     # publish the built package
-```
+1. Bump `version` in `package.json` (for example `1.0.1`).
+2. Merge that change to `main` (via a PR, since `main` is protected).
+3. On GitHub, go to Releases, choose Draft a new release, create a tag like `v1.0.1`, write the notes, and click Publish release.
 
-See the [Releases](https://github.com/Breezil/Breezil-Hypixel-Parsers/releases) page for changelogs.
+Publishing the release triggers the workflow, which builds the package and runs `npm publish` with provenance. The first publish is done once by a maintainer (`npm publish` locally) so the package exists, after which the Trusted Publisher setup lets the Action handle every release with no token to manage.
 
 ## Roadmap
 
 - [ ] Add an automated test suite covering the core parsers
 - [ ] Expand modelled fields on the SkyBlock profile tree
-- [ ] Flesh out remaining game-mode stat shapes
 
 Have an idea? [Open a feature request](https://github.com/Breezil/Breezil-Hypixel-Parsers/issues/new?template=feature_request.yml).
 
