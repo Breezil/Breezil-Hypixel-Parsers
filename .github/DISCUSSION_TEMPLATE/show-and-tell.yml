@@ -1,0 +1,28 @@
+# ───────────────────────────────────────────────────────────────────
+#  BREEZIL - Show and tell discussion form
+#  Path (per repo):  .github/DISCUSSION_TEMPLATE/show-and-tell.yml  (file name = category slug)
+# ───────────────────────────────────────────────────────────────────
+title: "[Show and tell]: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Built something with `@breezil/hypixel-parsers`? Show it off. We love seeing what people make. 🎉
+  - type: textarea
+    id: what
+    attributes:
+      label: What did you build?
+      placeholder: Describe your project, tool, bot, or setup.
+    validations:
+      required: true
+  - type: input
+    id: link
+    attributes:
+      label: Link
+      placeholder: Repo, video, screenshot, or live demo.
+  - type: input
+    id: api-area
+    attributes:
+      label: Which parts of the Hypixel API did you parse?
+      placeholder: "e.g. player + SkyBlock profiles, bazaar, guild"
+

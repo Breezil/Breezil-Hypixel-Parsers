@@ -1,0 +1,55 @@
+{
+  "name": "@breezil/hypixel-parsers",
+  "version": "1.0.0",
+  "description": "Rich, typed parsers for Hypixel API JSON - players, guilds, SkyBlock, and every game mode turned into readonly fully-typed objects. Pure, no network.",
+  "keywords": [
+    "breezil",
+    "hypixel",
+    "parser",
+    "minecraft",
+    "types",
+    "typescript"
+  ],
+  "license": "MIT",
+  "author": "Breezil",
+  "homepage": "https://github.com/Breezil/Breezil-Hypixel-Parsers#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Breezil/Breezil-Hypixel-Parsers.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Breezil/Breezil-Hypixel-Parsers/issues"
+  },
+  "sideEffects": false,
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "docs:dev": "vitepress dev docs",
+    "docs:build": "vitepress build docs",
+    "docs:preview": "vitepress preview docs"
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.43",
+    "typescript": "^5.3.0",
+    "vitepress": "^1.6.3"
+  },
+  "overrides": {
+    "esbuild": "^0.25.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "dependencies": {
+    "prismarine-nbt": "^2.8.0"
+  }
+}
+
