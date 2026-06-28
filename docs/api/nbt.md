@@ -1,130 +1,79 @@
-# NBT Decoding
+# NBT
 
-The NBT decoders turn Hypixel's base64 + gzipped-NBT blobs (item bytes, inventory dumps, and similar payloads) into readonly, fully-typed JavaScript objects. They are strict-raw: every field mirrors the decoded NBT compound exactly, with no computed levels, ratios, or aggregates of any kind.
+The NBT module decodes Hypixel's base64 + gzipped-NBT blobs (item bytes, inventory dumps, and similar payloads) into plain, readonly, fully-typed JavaScript. It exposes two parsers — `decodeNbt` for an arbitrary compound and `decodeItemBytes` for an inventory of items — plus the typed item shapes the latter produces. Decoding is strict-raw and fully synchronous: the blob is decoded from base64, gunzipped with `gunzipSync`, parsed as big-endian uncompressed NBT, and simplified into a plain object via `prismarine-nbt`'s `simplify`. Decoding never throws — any empty or invalid input degrades to `null` or `[]`. Item fields are read through the safe readers from the common module, so missing numbers become `0`, missing strings become `""`, and missing nested objects become empty objects.
 
 ## decodeNbt
 
-Synchronously decodes a Hypixel base64 + gzipped-NBT blob into a simplified NBT compound, mapping the raw decoded tag tree field-for-field into a plain readonly object.
+Decodes a single NBT compound.
 
 ```ts
-export function decodeNbt(base64: string): NbtCompound | null;
+function decodeNbt(base64: string): NbtCompound | null;
 ```
 
-The input is decoded from base64, gunzipped, parsed as big-endian uncompressed NBT, and then simplified into a plain object via `prismarine-nbt`'s `simplify`.
-
-### Returned type
-
-```ts
-export type NbtCompound = Readonly<Record<string, unknown>>;
-```
-
-`NbtCompound` is an open record: keys are the NBT tag names and values are `unknown` (the simplified NBT values). No specific keys are guaranteed by the type.
-
-### Null and empty behavior
-
-- Returns `null` when `base64` is not a string or is an empty string.
-- Returns `null` when the base64-decoded buffer is empty.
-- Returns `null` when decompression, NBT parsing, or simplification throws (all errors are caught).
-- Returns `null` when the simplified result is not a non-array object (i.e. it is a primitive, `null`, or an array).
-- Otherwise returns the simplified value cast to `NbtCompound`.
+Returns the simplified compound on success. Returns `null` when `base64` is not a string or is an empty string, when the base64-decoded buffer is empty, when decompression / NBT parsing / simplification throws (all errors are caught), or when the simplified result is not a non-array object (i.e. a primitive, `null`, or an array). Otherwise returns the simplified value cast to `NbtCompound`.
 
 ## decodeItemBytes
 
-Synchronously decodes a Hypixel base64 + gzipped-NBT inventory blob into typed items, one entry per slot, mapping each NBT item tag field-for-field into an `NbtItem`.
+Decodes an inventory blob into typed items, one entry per slot.
 
 ```ts
-export function decodeItemBytes(base64: string): NbtItem[];
+function decodeItemBytes(base64: string): NbtItem[];
 ```
 
-The blob is decoded the same way as [`decodeNbt`](#decodenbt); the item list is read from the root compound's `i` key, and each list entry is converted into an [`NbtItem`](#nbtitem).
+Decodes the blob the same way as `decodeNbt`, then reads the item list from the root compound's `i` key. Returns `[]` when the underlying decode returns `null` (same conditions as `decodeNbt`) or when `i` is not an array. Each list entry that is a non-null, non-array object is converted into an `NbtItem`, in list order; entries that are primitives, `null`, or arrays are skipped. Empty slots that still decode to objects produce an `NbtItem` populated with the safe-reader defaults.
 
-### Null and empty behavior
+---
 
-- Returns `[]` when the underlying decode (see [`decodeNbt`](#decodenbt)) returns `null`.
-- Returns `[]` when the root compound's `i` field is not an array.
-- Skips any list entry that is not a non-array object (primitives, `null`, and nested arrays are ignored).
-- Otherwise returns one [`NbtItem`](#nbtitem) per valid entry, in list order.
+## Types
 
-### NbtItem
+### NbtCompound
 
-The per-slot item object returned in the `decodeItemBytes` array.
+The shape returned by `decodeNbt`: an open, readonly record where keys are NBT tag names and values are the simplified NBT values. No specific keys are guaranteed by the type.
 
 ```ts
-export interface NbtItem {
-  readonly id: number;
-  readonly count: number;
-  readonly damage: number;
-  readonly tag: NbtItemTag;
-}
+type NbtCompound = Readonly<Record<string, unknown>>;
 ```
-
-| Field    | Type                        | Notes                                                                          |
-| -------- | --------------------------- | ------------------------------------------------------------------------------ |
-| `id`     | `number`                    | The item's numeric id (from the raw `id` field; `0` when absent).              |
-| `count`  | `number`                    | The stack count (from the raw `Count` field; `0` when absent).                 |
-| `damage` | `number`                    | The item damage/metadata value (from the raw `Damage` field; `0` when absent). |
-| `tag`    | [`NbtItemTag`](#nbtitemtag) | The decoded item tag tree.                                                     |
-
-### NbtItemTag
-
-The decoded `tag` compound of an item.
-
-```ts
-export interface NbtItemTag {
-  readonly display: NbtItemDisplay;
-  readonly enchantments: readonly NbtEnchantment[];
-  readonly extraAttributes: NbtExtraAttributes;
-  readonly raw: NbtCompound;
-}
-```
-
-| Field             | Type                                             | Notes                                                                 |
-| ----------------- | ------------------------------------------------ | --------------------------------------------------------------------- |
-| `display`         | [`NbtItemDisplay`](#nbtitemdisplay)              | Display name, lore, and color.                                        |
-| `enchantments`    | readonly [`NbtEnchantment`](#nbtenchantment)`[]` | Decoded from the tag's `ench` list; `[]` when absent or not an array. |
-| `extraAttributes` | [`NbtExtraAttributes`](#nbtextraattributes)      | The SkyBlock `ExtraAttributes` compound.                              |
-| `raw`             | [`NbtCompound`](#decodenbt)                      | The complete, unmodified `tag` compound.                              |
 
 ### NbtItemDisplay
 
 The item's `display` compound.
 
 ```ts
-export interface NbtItemDisplay {
+interface NbtItemDisplay {
   readonly name: string;
   readonly lore: readonly string[];
   readonly color: number | null;
 }
 ```
 
-| Field   | Type                | Notes                                                                               |
-| ------- | ------------------- | ----------------------------------------------------------------------------------- | -------------------------------------------------------- |
-| `name`  | `string`            | The display `Name`; `""` when absent.                                               |
-| `lore`  | readonly `string[]` | The display `Lore`; only string entries are kept, `[]` when absent or not an array. |
-| `color` | `number             | null`                                                                               | The display `color`; `null` when absent or not a number. |
+| Field   | Type                | Notes                                                                                  |
+| ------- | ------------------- | -------------------------------------------------------------------------------------- | ------------------------------------------------------------ |
+| `name`  | `string`            | Raw `display.Name` via the safe string reader; `""` when absent or non-string.         |
+| `lore`  | `readonly string[]` | Raw `display.Lore` filtered to its `string` entries; `[]` when absent or not an array. |
+| `color` | `number \\          | null`                                                                                  | Raw `display.color` when it is a `number`, otherwise `null`. |
 
 ### NbtEnchantment
 
-A single entry in the item tag's `enchantments` array (decoded from the NBT `ench` list).
+A single entry of the item tag's `ench` list.
 
 ```ts
-export interface NbtEnchantment {
+interface NbtEnchantment {
   readonly id: number;
   readonly level: number;
 }
 ```
 
-| Field   | Type     | Notes                                                                  |
-| ------- | -------- | ---------------------------------------------------------------------- |
-| `id`    | `number` | The enchantment id (from the entry's `id` field; `0` when absent).     |
-| `level` | `number` | The enchantment level (from the entry's `lvl` field; `0` when absent). |
+| Field   | Type     | Notes                                                        |
+| ------- | -------- | ------------------------------------------------------------ |
+| `id`    | `number` | Raw entry `id` via the safe number reader; `0` when absent.  |
+| `level` | `number` | Raw entry `lvl` via the safe number reader; `0` when absent. |
 
 ### NbtExtraAttributes
 
-The SkyBlock `ExtraAttributes` compound. This interface spreads the entire raw `ExtraAttributes` compound and then overrides a set of known fields, so arbitrary additional keys are also present.
+The SkyBlock `ExtraAttributes` compound. The entire raw compound is spread through first, then the known fields below are normalized on top, so arbitrary additional keys remain present (hence the `[key: string]: unknown` index signature).
 
 ```ts
-export interface NbtExtraAttributes {
+interface NbtExtraAttributes {
   readonly id: string;
   readonly uuid: string | null;
   readonly timestamp: string | number | readonly [number, number] | null;
@@ -136,14 +85,66 @@ export interface NbtExtraAttributes {
 }
 ```
 
-| Field              | Type                               | Notes                                                           |
-| ------------------ | ---------------------------------- | --------------------------------------------------------------- | ---------------------------------------------------------------- | ----- | ------------------------------------------------------------ |
-| `id`               | `string`                           | The SkyBlock item id; `""` when absent.                         |
-| `uuid`             | `string                            | null`                                                           | The item's unique uuid; `null` when absent or not a string.      |
-| `timestamp`        | `string                            | number                                                          | readonly [number, number]                                        | null` | A string, a number, or a two-number tuple; `null` otherwise. |
-| `rarity_upgrades`  | `number`                           | Number of rarity upgrades applied; `0` when absent.             |
-| `modifier`         | `string                            | null`                                                           | The item's reforge/modifier; `null` when absent or not a string. |
-| `enchantments`     | `Readonly<Record<string, number>>` | Map of enchantment name to level; only numeric levels are kept. |
-| `hot_potato_count` | `number`                           | Number of hot potato book applications; `0` when absent.        |
-| `[key: string]`    | `unknown`                          | Any additional raw `ExtraAttributes` keys, preserved as-is.     |
+| Field              | Type                               | Notes                                                                                 |
+| ------------------ | ---------------------------------- | ------------------------------------------------------------------------------------- | ------------------------------------------------------- | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `id`               | `string`                           | Raw `id` via the safe string reader; `""` when absent or non-string.                  |
+| `uuid`             | `string \\                         | null`                                                                                 | Raw `uuid` when it is a `string`, otherwise `null`.     |
+| `timestamp`        | `string \\                         | number \\                                                                             | readonly [number, number] \\                            | null` | Raw `timestamp` as-is when a `string` or `number`; a `[number, number]` tuple when the raw value is a 2-element numeric array; otherwise `null`. |
+| `rarity_upgrades`  | `number`                           | Raw `rarity_upgrades` via the safe number reader; `0` when absent.                    |
+| `modifier`         | `string \\                         | null`                                                                                 | Raw `modifier` when it is a `string`, otherwise `null`. |
+| `enchantments`     | `Readonly<Record<string, number>>` | Raw `enchantments` object reduced to only its `number`-valued keys; `{}` when absent. |
+| `hot_potato_count` | `number`                           | Raw `hot_potato_count` via the safe number reader; `0` when absent.                   |
+| `[key: string]`    | `unknown`                          | Every other raw `ExtraAttributes` key, spread through unchanged.                      |
+
+### NbtItemTag
+
+The decoded `tag` compound of an item.
+
+```ts
+interface NbtItemTag {
+  readonly display: NbtItemDisplay;
+  readonly enchantments: readonly NbtEnchantment[];
+  readonly extraAttributes: NbtExtraAttributes;
+  readonly raw: NbtCompound;
+}
+```
+
+| Field             | Type                        | Notes                                                                 |
+| ----------------- | --------------------------- | --------------------------------------------------------------------- |
+| `display`         | `NbtItemDisplay`            | The item's `display` block (name, lore, color).                       |
+| `enchantments`    | `readonly NbtEnchantment[]` | Decoded from the tag's `ench` list; `[]` when absent or not an array. |
+| `extraAttributes` | `NbtExtraAttributes`        | The SkyBlock `ExtraAttributes` compound.                              |
+| `raw`             | `NbtCompound`               | The complete, unmodified `tag` compound.                              |
+
+### NbtItem
+
+A single decoded inventory item — the per-slot object returned in the `decodeItemBytes` array.
+
+```ts
+interface NbtItem {
+  readonly id: number;
+  readonly count: number;
+  readonly damage: number;
+  readonly tag: NbtItemTag;
+}
+```
+
+| Field    | Type         | Notes                                                                       |
+| -------- | ------------ | --------------------------------------------------------------------------- |
+| `id`     | `number`     | Raw `id` via the safe number reader; `0` when absent.                       |
+| `count`  | `number`     | Raw `Count` (stack count) via the safe number reader; `0` when absent.      |
+| `damage` | `number`     | Raw `Damage` (damage/metadata) via the safe number reader; `0` when absent. |
+| `tag`    | `NbtItemTag` | The item's decoded `tag` tree.                                              |
+
+---
+
+## Returned type tree
+
+- `decodeNbt` returns `NbtCompound | null`.
+- `decodeItemBytes` returns `NbtItem[]`, where each `NbtItem` nests:
+  - `tag: NbtItemTag`
+    - `display: NbtItemDisplay`
+    - `enchantments: readonly NbtEnchantment[]`
+    - `extraAttributes: NbtExtraAttributes`
+    - `raw: NbtCompound`
 

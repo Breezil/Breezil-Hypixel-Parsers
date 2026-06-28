@@ -46,14 +46,7 @@ export interface QuakecraftSettings {
   readonly messageYourKills: boolean;
 }
 
-export interface QuakecraftMapVotes {
-  readonly ascended: number;
-  readonly belmorn: number;
-  readonly coldWar: number;
-  readonly faarah: number;
-  readonly reactor: number;
-  readonly town: number;
-}
+export type QuakecraftMapVotes = Readonly<Record<string, number>>;
 
 export interface QuakecraftStats {
   readonly coins: number;
@@ -62,6 +55,12 @@ export interface QuakecraftStats {
   readonly killsDeathmatchTeams: number;
   readonly killsTimeAttack: number;
   readonly killsTourneyUnknown: number;
+  readonly winsDeathmatch: number;
+  readonly winsDeathmatchTeam: number;
+  readonly winsTeam: number;
+  readonly winsTimeAttack: number;
+  readonly teamWins: number;
+  readonly compassRefund: number;
   readonly monthlyKillsA: number;
   readonly monthlyKillsB: number;
   readonly weeklyKillsA: number;
@@ -136,14 +135,14 @@ function parseSettings(quake: Record<string, unknown>): QuakecraftSettings {
 }
 
 function parseMapVotes(quake: Record<string, unknown>): QuakecraftMapVotes {
-  return {
-    ascended: num(quake, "votes_Ascended"),
-    belmorn: num(quake, "votes_Belmorn"),
-    coldWar: num(quake, "votes_Cold_War"),
-    faarah: num(quake, "votes_Faarah"),
-    reactor: num(quake, "votes_Reactor"),
-    town: num(quake, "votes_Town"),
-  };
+  const result: Record<string, number> = {};
+  for (const key of Object.keys(quake)) {
+    const match = /^votes_(.+)$/.exec(key);
+    if (match && typeof quake[key] === "number") {
+      result[match[1]] = num(quake, key);
+    }
+  }
+  return result;
 }
 
 function parsePackages(quake: Record<string, unknown>): readonly string[] {
@@ -169,6 +168,12 @@ export function parseQuakecraft(
     killsDeathmatchTeams: num(quake, "kills_dm_teams"),
     killsTimeAttack: num(quake, "kills_timeattack"),
     killsTourneyUnknown: num(quake, "kills_tourney_unknown"),
+    winsDeathmatch: num(quake, "wins_dm"),
+    winsDeathmatchTeam: num(quake, "wins_dm_team"),
+    winsTeam: num(quake, "wins_team"),
+    winsTimeAttack: num(quake, "wins_timeattack"),
+    teamWins: num(quake, "team_wins"),
+    compassRefund: num(quake, "compass_refund"),
     monthlyKillsA: num(quake, "monthly_kills_a"),
     monthlyKillsB: num(quake, "monthly_kills_b"),
     weeklyKillsA: num(quake, "weekly_kills_a"),

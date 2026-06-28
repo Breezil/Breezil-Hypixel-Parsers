@@ -2,6 +2,7 @@ import { bool, date, num, obj, str } from "./common";
 
 export interface GuildMember {
   readonly uuid: string;
+  readonly name: string;
   readonly rank: string;
   readonly joinedAt: Date | null;
   readonly questParticipation: number;
@@ -93,6 +94,7 @@ function stringList(parent: Record<string, unknown>, key: string): string[] {
 function parseMember(raw: Record<string, unknown>): GuildMember {
   return {
     uuid: str(raw, "uuid"),
+    name: str(raw, "name"),
     rank: str(raw, "rank"),
     joinedAt: date(raw, "joined"),
     questParticipation: num(raw, "questParticipation"),

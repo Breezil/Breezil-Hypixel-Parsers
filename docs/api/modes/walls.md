@@ -1,21 +1,35 @@
 # Walls
 
-Parser for the classic Walls minigame. It maps the raw `stats.Walls` block field-for-field into a readonly, fully-typed object with zero computed values.
+The Walls module exposes a single parser, `parseWalls`, which mirrors the raw `stats.Walls` block of the Hypixel player API field-for-field into readonly, fully-typed objects. Every value below is read straight from the raw JSON with no computation, no ratios, and no derived totals.
 
 ## parseWalls
 
 Parses a player's Walls stats (`stats.Walls`) into a typed object.
 
 ```ts
-export function parseWalls(stats: Record<string, unknown>): WallsStats | null;
+function parseWalls(stats: Record<string, unknown>): WallsStats | null;
 ```
 
-Returns `null` when `stats.Walls` is absent, is not an object, is `null`, or is an array. The `coins` field falls back to the raw `tokens` value when `coins` is missing (`num(walls, "coins") || num(walls, "tokens")`). Array fields default to an empty array and map fields default to an empty object when the underlying key is missing or not the expected shape.
+### Null / empty behavior
+
+`parseWalls` returns `null` when `stats.Walls` is missing or is not a plain object (i.e. it is absent, `null`, or an array). Otherwise it always returns a fully-populated `WallsStats` object filled in by the safe readers used throughout the module:
+
+- Missing or non-number values become `0`.
+- Boolean fields are `true` only when the raw value is exactly `true`, otherwise `false`.
+- `coins` reads `coins`, falling back to the raw `tokens` value when `coins` is `0`/absent.
+- `packages` becomes an empty array (`[]`) when absent or not an array, keeping only string entries.
+- The inventory maps (`inventory`, `inventoryLayout`, `inventoryLayout2`) keep only the slots whose raw values are strings, so they may be empty objects when absent.
+
+---
+
+## Returned type tree
 
 ### WallsStats
 
+The root object returned by `parseWalls`. Combines top-level totals, per-map vote counts, periodic (monthly/weekly) breakdowns, per-perk levels, and inventory layouts.
+
 ```ts
-export interface WallsStats {
+interface WallsStats {
   readonly coins: number;
   readonly kills: number;
   readonly deaths: number;
@@ -29,7 +43,23 @@ export interface WallsStats {
   readonly noStartingItems: boolean;
   readonly noStartingTools: boolean;
   readonly shoutCount: number;
+  readonly votesAztec: number;
+  readonly votesCandyland: number;
+  readonly votesCastle: number;
+  readonly votesDwarven: number;
+  readonly votesEgypt: number;
   readonly votesFantasy: number;
+  readonly votesHarmony: number;
+  readonly votesIsland: number;
+  readonly votesJungle: number;
+  readonly votesLoveLand: number;
+  readonly votesModern: number;
+  readonly votesNordic: number;
+  readonly votesOutback: number;
+  readonly votesSaraat: number;
+  readonly votesShire: number;
+  readonly votesSpace: number;
+  readonly votesWild: number;
   readonly monthlyAssistsA: number;
   readonly monthlyAssistsB: number;
   readonly weeklyAssistsA: number;
@@ -127,7 +157,30 @@ export interface WallsStats {
 | `noStartingItems` | `boolean` | `no_starting_items`             |
 | `noStartingTools` | `boolean` | `no_starting_tools`             |
 | `shoutCount`      | `number`  | `shout_count`                   |
-| `votesFantasy`    | `number`  | `votes_Fantasy`                 |
+
+#### Map vote counts
+
+Each vote field is a `number` read from the raw `votes_<Map>` key.
+
+| Field            | Raw key           |
+| ---------------- | ----------------- |
+| `votesAztec`     | `votes_Aztec`     |
+| `votesCandyland` | `votes_Candyland` |
+| `votesCastle`    | `votes_Castle`    |
+| `votesDwarven`   | `votes_Dwarven`   |
+| `votesEgypt`     | `votes_Egypt`     |
+| `votesFantasy`   | `votes_Fantasy`   |
+| `votesHarmony`   | `votes_Harmony`   |
+| `votesIsland`    | `votes_Island`    |
+| `votesJungle`    | `votes_Jungle`    |
+| `votesLoveLand`  | `votes_LoveLand`  |
+| `votesModern`    | `votes_Modern`    |
+| `votesNordic`    | `votes_Nordic`    |
+| `votesOutback`   | `votes_Outback`   |
+| `votesSaraat`    | `votes_Saraat`    |
+| `votesShire`     | `votes_Shire`     |
+| `votesSpace`     | `votes_Space`     |
+| `votesWild`      | `votes_Wild`      |
 
 #### Periodic counters
 

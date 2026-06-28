@@ -16,7 +16,7 @@ Notes on null/empty behavior across the tree:
 
 - All numeric fields default to `0` and all string fields default to `""` when their raw key is absent.
 - `coins` reads `coins`, falling back to `tokens` when `coins` is falsy.
-- Record fields (for example `kitWins`, `legacyWinstreaks`, `claimedOdysseyRewards`, `classAbilities`, `seasons`, `layouts`) are built by scanning prefixed/suffixed raw keys and include only entries whose values match the expected type; they are empty objects when nothing matches.
+- Record fields (for example `kitWins`, `legacyWinstreaks`, `claimedOdysseyRewards`, `classAbilities`, `modeAbilities`, `seasons`, `layouts`) are built by scanning prefixed/suffixed raw keys and include only entries whose values match the expected type; they are empty objects when nothing matches.
 - Array fields (`packages`, `customTitles`, `challengeSettings`, `bridgeMapWins`, `mapsWonOn`, `duelsChestHistory`) return empty arrays when the raw value is missing or not an array, and keep only string entries.
 
 ## DuelsStats
@@ -52,6 +52,7 @@ export interface DuelsStats {
   readonly goldenApplesEaten: number;
   readonly goldenHeadsEaten: number;
   readonly healPotsUsed: number;
+  readonly potionsUsed: number;
   readonly damageDealt: number;
   readonly longestCombo: number;
   readonly captures: number;
@@ -236,6 +237,7 @@ export interface DuelsGamemodeStats {
   readonly goldenApplesEaten: number;
   readonly goldenHeadsEaten: number;
   readonly healPotsUsed: number;
+  readonly potionsUsed: number;
   readonly damageDealt: number;
   readonly coins: number;
   readonly coinsGained: number;
@@ -243,7 +245,7 @@ export interface DuelsGamemodeStats {
 }
 ```
 
-`kitWins` is a map built from `<mode>_*_kit_wins` raw keys; the empty-kit key (`<mode>_kit_wins`) is stored under `total`.
+`potionsUsed` maps the raw `<mode>_potions_used` key. `kitWins` is a map built from `<mode>_*_kit_wins` raw keys; the empty-kit key (`<mode>_kit_wins`) is stored under `total`.
 
 ## DuelsBridgeGamemodeStats
 
@@ -300,15 +302,25 @@ export interface DuelsComboStats extends DuelsModeStats {
 
 ## DuelsParkourStats
 
-Extends `DuelsModeStats` with parkour-specific fields (raw keys `parkour_checkpoints_reached`, `parkour_personal_best`, `parkour_players_hidden`).
+Extends `DuelsModeStats` (mode token `parkour_eight`, category `parkour`) with parkour-specific fields.
 
 ```ts
 export interface DuelsParkourStats extends DuelsModeStats {
   readonly checkpointsReached: number;
   readonly personalBest: number;
+  readonly modeCheckpointsReached: number;
+  readonly modePersonalBest: number;
   readonly playersHidden: boolean;
 }
 ```
+
+| Field                    | Raw key                                     |
+| ------------------------ | ------------------------------------------- |
+| `checkpointsReached`     | `parkour_checkpoints_reached`               |
+| `personalBest`           | `parkour_personal_best`                     |
+| `modeCheckpointsReached` | `parkour_eight_parkour_checkpoints_reached` |
+| `modePersonalBest`       | `parkour_eight_parkour_personal_best`       |
+| `playersHidden`          | `parkour_players_hidden`                    |
 
 ## DuelsModeGroupStats
 
@@ -434,13 +446,14 @@ export interface DuelsMegaWallsStats extends DuelsModeGroupStats {
   readonly selectedClass: string;
   readonly abilities: DuelsMegaWallsAbilities;
   readonly classAbilities: Readonly<Record<string, number>>;
+  readonly modeAbilities: Readonly<Record<string, number>>;
   readonly solo: DuelsGamemodeStats;
   readonly doubles: DuelsGamemodeStats;
   readonly fours: DuelsGamemodeStats;
 }
 ```
 
-`selectedClass` maps to `mw_duels_class`. `classAbilities` is a map of per-class ability raw keys (numeric keys ending in one of the known ability bases, excluding the base set and the `mw_`/`spleef`/`bedwars` prefixes).
+`selectedClass` maps to `mw_duels_class`. `classAbilities` is a map of per-class ability raw keys (numeric keys ending in one of the known ability bases, excluding the base set and the `mw_`/`spleef`/`bedwars` prefixes). `modeAbilities` is a map of per-mode ability raw keys (numeric keys starting with `mw_duel_`/`mw_doubles_` and ending in one of the known ability bases, with or without the `_standard` suffix).
 
 ## DuelsOverPoweredStats
 
@@ -509,9 +522,27 @@ export interface DuelsArenaStats extends DuelsGamemodeStats {
 }
 ```
 
+## DuelsQuakeSoloStats
+
+Extends `DuelsGamemodeStats` (mode token `quake_duel`) with Quake shot counters scoped to the solo sub-gamemode.
+
+```ts
+export interface DuelsQuakeSoloStats extends DuelsGamemodeStats {
+  readonly headshots: number;
+  readonly shotHits: number;
+  readonly shotsTaken: number;
+}
+```
+
+| Field        | Raw key                        |
+| ------------ | ------------------------------ |
+| `headshots`  | `quake_duel_quake_headshots`   |
+| `shotHits`   | `quake_duel_quake_shot_hits`   |
+| `shotsTaken` | `quake_duel_quake_shots_taken` |
+
 ## DuelsQuakeStats
 
-Extends `DuelsWinstreakGroupStats` with Quake data (`quake_duel` sub-gamemode).
+Extends `DuelsWinstreakGroupStats` with top-level Quake data and the `quake_duel` sub-gamemode (`DuelsQuakeSoloStats`).
 
 ```ts
 export interface DuelsQuakeStats extends DuelsWinstreakGroupStats {
@@ -519,7 +550,7 @@ export interface DuelsQuakeStats extends DuelsWinstreakGroupStats {
   readonly headshots: number;
   readonly shotHits: number;
   readonly shotsTaken: number;
-  readonly solo: DuelsGamemodeStats;
+  readonly solo: DuelsQuakeSoloStats;
 }
 ```
 
@@ -624,6 +655,7 @@ export interface DuelsBedwarsStats extends DuelsWinstreakGroupStats {
   readonly bedsLost: number;
   readonly gamesPlayed: number;
   readonly itemsPurchased: number;
+  readonly itemsPurchasedAlt: number;
   readonly permanentItemsPurchased: number;
   readonly killsByCause: DuelsBedwarsCauseBreakdown;
   readonly deathsByCause: DuelsBedwarsCauseBreakdown;
@@ -646,6 +678,7 @@ export interface DuelsBedwarsStats extends DuelsWinstreakGroupStats {
 | `bedsLost`                | `beds_lost_bedwars`                 |
 | `gamesPlayed`             | `games_played_bedwars`              |
 | `itemsPurchased`          | `items_purchased_bedwars`           |
+| `itemsPurchasedAlt`       | `_items_purchased_bedwars`          |
 | `permanentItemsPurchased` | `permanent_items_purchased_bedwars` |
 | `killsByCause`            | metric `kills`                      |
 | `deathsByCause`           | metric `deaths`                     |
@@ -798,6 +831,9 @@ export interface DuelsPrivateGames {
   readonly giveRegen: string;
   readonly lowGravity: boolean;
   readonly blockProtection: boolean;
+  readonly changeWeapon: string;
+  readonly roundTime: string;
+  readonly healthBuff: string;
 }
 ```
 
@@ -813,6 +849,9 @@ export interface DuelsPrivateGames {
 | `giveRegen`       | `duels_give_regen`              |
 | `lowGravity`      | `low_gravity`                   |
 | `blockProtection` | `duels_block_protection`        |
+| `changeWeapon`    | `duels_change_weapon`           |
+| `roundTime`       | `duels_round_time`              |
+| `healthBuff`      | `health_buff`                   |
 
 ## DuelsMigrationFlags
 

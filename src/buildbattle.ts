@@ -18,6 +18,11 @@ export interface BuildBattlePeriodCoins {
   readonly coinsB: number;
 }
 
+export interface BuildBattleFavorites {
+  readonly backdrops: readonly string[];
+  readonly island: readonly string[];
+}
+
 export interface BuildBattleStats {
   readonly coins: number;
   readonly score: number;
@@ -29,6 +34,11 @@ export interface BuildBattleStats {
   readonly winsGuessTheBuild: number;
   readonly winsSpeedBuilders: number;
   readonly winsHalloween: number;
+  readonly winsBuildBattle: number;
+  readonly seasonalWins: number;
+  readonly seasonalWinsSoloNormal: number;
+  readonly seasonalWinsSpeedBuilders: number;
+  readonly seasonalWinsTeamsNormal: number;
   readonly correctGuesses: number;
   readonly firstGuesses: number;
   readonly totalVotes: number;
@@ -42,17 +52,22 @@ export interface BuildBattleStats {
   readonly packages: readonly string[];
   readonly perfectInsaneBuilds: readonly string[];
   readonly activeMovementTrail: string;
+  readonly activeIsland: string;
   readonly selectedHat: string;
   readonly suit: string;
   readonly victoryDance: string;
   readonly selectedBackdrop: string;
   readonly selectedPrefixIcon: string;
+  readonly selectedIconColor: string;
   readonly lastPurchasedSong: string;
   readonly shopSort: string;
+  readonly shopSortOwnedFirst: boolean;
   readonly leaderboardSettings: BuildBattleLeaderboardSettings;
   readonly lastWin: BuildBattleLastWin;
+  readonly favorites: BuildBattleFavorites;
   readonly votesByTheme: Readonly<Record<string, number>>;
   readonly votesReceived: Readonly<Record<string, number>>;
+  readonly backdropWins: Readonly<Record<string, number>>;
 }
 
 function stringList(
@@ -100,18 +115,24 @@ function parseVotesByTheme(
   return votes;
 }
 
-function parseVotesReceived(
-  buildBattle: Record<string, unknown>,
-): Record<string, number> {
-  const received: Record<string, number> = {};
-  for (const [key, value] of Object.entries(
-    obj(buildBattle, "votes_received"),
-  )) {
+function numberRecord(record: Record<string, unknown>): Record<string, number> {
+  const result: Record<string, number> = {};
+  for (const [key, value] of Object.entries(record)) {
     if (typeof value === "number") {
-      received[key] = value;
+      result[key] = value;
     }
   }
-  return received;
+  return result;
+}
+
+function parseFavorites(
+  buildBattle: Record<string, unknown>,
+): BuildBattleFavorites {
+  const favorites = obj(buildBattle, "favorites");
+  return {
+    backdrops: stringList(favorites, "backdrops"),
+    island: stringList(favorites, "island"),
+  };
 }
 
 /** Parses a player's Build Battle stats (`stats.BuildBattle`) into a typed object. */
@@ -134,6 +155,11 @@ export function parseBuildBattle(
     winsGuessTheBuild: num(buildBattle, "wins_guess_the_build"),
     winsSpeedBuilders: num(buildBattle, "wins_speed_builders"),
     winsHalloween: num(buildBattle, "wins_halloween"),
+    winsBuildBattle: num(buildBattle, "wins_buildbattle"),
+    seasonalWins: num(buildBattle, "seasonal_wins"),
+    seasonalWinsSoloNormal: num(buildBattle, "seasonal_wins_solo_normal"),
+    seasonalWinsSpeedBuilders: num(buildBattle, "seasonal_wins_speed_builders"),
+    seasonalWinsTeamsNormal: num(buildBattle, "seasonal_wins_teams_normal"),
     correctGuesses: num(buildBattle, "correct_guesses"),
     firstGuesses: num(buildBattle, "first_guesses"),
     totalVotes: num(buildBattle, "total_votes"),
@@ -147,20 +173,25 @@ export function parseBuildBattle(
     packages: stringList(buildBattle, "packages"),
     perfectInsaneBuilds: stringList(buildBattle, "perfect_insane_builds"),
     activeMovementTrail: str(buildBattle, "active_movement_trail"),
+    activeIsland: str(buildBattle, "active_island"),
     selectedHat: str(buildBattle, "new_selected_hat"),
     suit: str(buildBattle, "new_suit"),
     victoryDance: str(buildBattle, "new_victory_dance"),
     selectedBackdrop: str(buildBattle, "selected_backdrop"),
     selectedPrefixIcon: str(buildBattle, "selected_prefix_icon"),
+    selectedIconColor: str(buildBattle, "selected_icon_color"),
     lastPurchasedSong: str(buildBattle, "last_purchased_song"),
     shopSort: str(buildBattle, "shop_sort"),
+    shopSortOwnedFirst: bool(buildBattle, "shop_sort_enable_owned_first"),
     leaderboardSettings: {
       mode: str(obj(buildBattle, "leaderboardSettings"), "mode"),
       resetType: str(obj(buildBattle, "leaderboardSettings"), "resetType"),
     },
     lastWin: parseLastWin(buildBattle),
+    favorites: parseFavorites(buildBattle),
     votesByTheme: parseVotesByTheme(buildBattle),
-    votesReceived: parseVotesReceived(buildBattle),
+    votesReceived: numberRecord(obj(buildBattle, "votes_received")),
+    backdropWins: numberRecord(obj(buildBattle, "backdrop_wins")),
   };
 }
 

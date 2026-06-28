@@ -23,6 +23,7 @@ export interface UHCPrivateGames {
   readonly infiniteCrafts: boolean;
   readonly borderShrink: string;
   readonly gameLength: string;
+  readonly gameModifiers: string;
   readonly gracePeriod: string;
   readonly health: string;
   readonly mode: string;
@@ -32,13 +33,17 @@ export interface UHCPrivateGames {
 export interface UHCStats {
   readonly coins: number;
   readonly score: number;
+  readonly customLevel: number;
   readonly equippedKit: string;
   readonly clearupAchievement: boolean;
   readonly cache3: boolean;
+  readonly combatTracker: boolean;
+  readonly craftingPromptDisabled: boolean;
   readonly savedStats: boolean;
   readonly teammateDamage: boolean;
   readonly uhcParkour1: boolean;
   readonly uhcParkour2: boolean;
+  readonly uhcShowQueueBook: boolean;
   readonly uhcStarDisplay: boolean;
   readonly perks: Readonly<Record<string, number>>;
   readonly kits: Readonly<Record<string, number>>;
@@ -101,6 +106,7 @@ function parsePrivateGames(uhc: Record<string, unknown>): UHCPrivateGames {
     infiniteCrafts: bool(games, "infinite_crafts"),
     borderShrink: str(games, "border_shrink"),
     gameLength: str(games, "game_length"),
+    gameModifiers: str(games, "game_modifiers"),
     gracePeriod: str(games, "grace_period"),
     health: str(games, "health"),
     mode: str(games, "mode"),
@@ -145,13 +151,17 @@ export function parseUHC(stats: Record<string, unknown>): UHCStats | null {
   return {
     coins: num(uhc, "coins"),
     score: num(uhc, "score"),
+    customLevel: num(uhc, "custom_level"),
     equippedKit: str(uhc, "equippedKit") || "None",
     clearupAchievement: bool(uhc, "clearup_achievement"),
     cache3: bool(uhc, "cache3"),
+    combatTracker: bool(uhc, "combatTracker"),
+    craftingPromptDisabled: bool(uhc, "crafting_prompt_disabled"),
     savedStats: bool(uhc, "saved_stats"),
     teammateDamage: bool(uhc, "teammate_damage"),
     uhcParkour1: bool(uhc, "uhc_parkour_1"),
     uhcParkour2: bool(uhc, "uhc_parkour_2"),
+    uhcShowQueueBook: bool(uhc, "uhc_showqueuebook"),
     uhcStarDisplay: bool(uhc, "uhc_star_display"),
     perks: prefixedNumberMap(uhc, "perk_"),
     kits: prefixedNumberMap(uhc, "kit_"),

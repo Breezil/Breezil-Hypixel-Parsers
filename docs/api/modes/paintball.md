@@ -1,31 +1,45 @@
 # Paintball
 
-Parser for the Hypixel Paintball Warfare mode. It maps the raw `stats.Paintball` block field-for-field into readonly, fully-typed objects with zero computation.
+The Paintball module exposes a single parser, `parsePaintball`, which mirrors the raw `stats.Paintball` block of the Hypixel player API field-for-field into readonly, fully-typed objects. Every value below is read straight from the raw JSON with no computation, no ratios, and no derived totals.
 
 ## parsePaintball
 
 Parses a player's Paintball stats (`stats.Paintball`) into a typed object.
 
 ```ts
-export function parsePaintball(
-  stats: Record<string, unknown>,
-): PaintballStats | null;
+function parsePaintball(stats: Record<string, unknown>): PaintballStats | null;
 ```
 
-Returns `null` when `stats.Paintball` is absent, is not an object, is `null`, or is an array.
+### Null / empty behavior
+
+`parsePaintball` returns `null` when `stats.Paintball` is missing, is not an object, or is an array. Otherwise it returns a fully-populated `PaintballStats` object. Missing fields are filled in by the safe readers used throughout the module:
+
+- Missing or non-number values become `0`.
+- Missing or non-string values become `""`.
+- Boolean fields are `true` only when the raw value is exactly `true`, otherwise `false`.
+- Missing nested objects are treated as empty objects, so every nested block is still present and populated with the defaults above.
+- The `packages` string-array field becomes an empty array (`[]`) when absent or non-array; non-string elements are filtered out.
+
+---
+
+## Returned type tree
 
 ### PaintballStats
 
+The root object returned by `parsePaintball`.
+
 ```ts
-export interface PaintballStats {
+interface PaintballStats {
   readonly coins: number;
   readonly kills: number;
   readonly deaths: number;
   readonly wins: number;
   readonly shotsFired: number;
+  readonly shots: number;
   readonly killstreaks: number;
   readonly headstart: number;
   readonly forcefieldTime: number;
+  readonly instantRespawn: boolean;
   readonly showKillPrefix: boolean;
   readonly selectedKillPrefix: string;
   readonly hat: string;
@@ -38,46 +52,42 @@ export interface PaintballStats {
 }
 ```
 
-| Field                | Type                   | Raw source                                               |
-| -------------------- | ---------------------- | -------------------------------------------------------- |
-| `coins`              | `number`               | `coins`, falling back to `tokens` when `coins` is falsy  |
-| `kills`              | `number`               | `kills`                                                  |
-| `deaths`             | `number`               | `deaths`                                                 |
-| `wins`               | `number`               | `wins`                                                   |
-| `shotsFired`         | `number`               | `shots_fired`                                            |
-| `killstreaks`        | `number`               | `killstreaks`                                            |
-| `headstart`          | `number`               | `headstart`                                              |
-| `forcefieldTime`     | `number`               | `forcefieldTime`                                         |
-| `showKillPrefix`     | `boolean`              | `showKillPrefix`                                         |
-| `selectedKillPrefix` | `string`               | `selectedKillPrefix`                                     |
-| `hat`                | `string`               | `hat`                                                    |
-| `favoriteSlots`      | `string`               | `favorite_slots`                                         |
-| `packages`           | `readonly string[]`    | `packages` (string entries only; `[]` when not an array) |
-| `monthly`            | `PaintballPeriodKills` | `monthly_kills_a` / `monthly_kills_b`                    |
-| `weekly`             | `PaintballPeriodKills` | `weekly_kills_a` / `weekly_kills_b`                      |
-| `perks`              | `PaintballPerks`       | perk fields                                              |
-| `mapVotes`           | `PaintballMapVotes`    | `votes_<map>` fields                                     |
+| Field                | Notes                                                               |
+| -------------------- | ------------------------------------------------------------------- |
+| `coins`              | Reads `coins`, falling back to `tokens` when `coins` is `0`/absent. |
+| `shotsFired`         | Raw `shots_fired`.                                                  |
+| `shots`              | Raw `shots`.                                                        |
+| `forcefieldTime`     | Raw `forcefieldTime`.                                               |
+| `instantRespawn`     | Raw `instant_respawn`.                                              |
+| `showKillPrefix`     | Raw `showKillPrefix`.                                               |
+| `selectedKillPrefix` | Raw `selectedKillPrefix`.                                           |
+| `favoriteSlots`      | Raw `favorite_slots`.                                               |
+
+---
+
+## Period kills
 
 ### PaintballPeriodKills
 
-Per-period kill counters, used for both `monthly` and `weekly`.
+The shared shape for `monthly` and `weekly`, each reading `<period>_kills_a` and `<period>_kills_b`.
 
 ```ts
-export interface PaintballPeriodKills {
+interface PaintballPeriodKills {
   readonly killsA: number;
   readonly killsB: number;
 }
 ```
 
-| Field    | Raw source         |
-| -------- | ------------------ |
-| `killsA` | `<period>_kills_a` |
-| `killsB` | `<period>_kills_b` |
+---
+
+## Perks
 
 ### PaintballPerks
 
+Each field reads the raw key of the same name.
+
 ```ts
-export interface PaintballPerks {
+interface PaintballPerks {
   readonly adrenaline: number;
   readonly endurance: number;
   readonly fortune: number;
@@ -87,14 +97,16 @@ export interface PaintballPerks {
 }
 ```
 
-Each field maps to the raw key of the same name.
+---
+
+## Map votes
 
 ### PaintballMapVotes
 
-Vote counts per map, each mapped from the raw `votes_<map>` key.
+Per-map vote counts, each read from a `votes_<Map>` raw key.
 
 ```ts
-export interface PaintballMapVotes {
+interface PaintballMapVotes {
   readonly Babyland: number;
   readonly Boletus: number;
   readonly Courtyard: number;
@@ -110,6 +122,7 @@ export interface PaintballMapVotes {
   readonly Outback: number;
   readonly Siege: number;
   readonly Swamps: number;
+  readonly Tide: number;
   readonly Victorian: number;
 }
 ```

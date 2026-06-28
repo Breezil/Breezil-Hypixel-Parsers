@@ -1,23 +1,36 @@
 # Warlords
 
-Parser for the Hypixel Warlords mode. It maps the raw `stats.Battleground` block field-for-field into readonly, fully-typed objects with zero computation.
+The Warlords module exposes a single parser, `parseWarlords`, which mirrors the raw `stats.Battleground` block of the Hypixel player API field-for-field into readonly, fully-typed objects. Every value below is read straight from the raw JSON with no computation, no ratios, and no derived totals.
 
 ## parseWarlords
 
-Parses a player's Warlords stats (`stats.Battleground`) into a typed object.
+Parses a player's Warlords stats (`stats.Battleground`) into a typed object. The parser reads directly from the passed object, so the caller supplies the raw `Battleground` block.
 
 ```ts
-export function parseWarlords(
-  stats: Record<string, unknown>,
-): WarlordsStats | null;
+function parseWarlords(stats: Record<string, unknown>): WarlordsStats | null;
 ```
 
-Returns `null` when the passed object has no keys (an empty `stats.Battleground` block). All nested numeric/string/boolean fields default to their zero values when absent. Array-backed fields (`weaponInventory`, `prestiged`, `packages`) default to `[]` when the raw value is not an array.
+### Null / empty behavior
+
+`parseWarlords` returns `null` when the passed object has no keys (an empty `stats.Battleground` block). Otherwise it always returns a fully-populated `WarlordsStats` object filled in by the safe readers used throughout the module:
+
+- Missing or non-number values become `0`.
+- Missing or non-string values become `""`.
+- Boolean fields are `true` only when the raw value is exactly `true`, otherwise `false`.
+- Array-backed fields (`weaponInventory`, `prestiged`, `packages`) become `[]` when the raw value is not an array; `weaponInventory` keeps only plain-object entries, `prestiged`/`packages` keep only string entries.
+- `classes`, `loadouts`, and `activeBoosts` always contain an entry for every key in their respective rosters.
+- The prefix-collected maps (`lifeLeech.byClass`, `damageDelayed.byClass`, `woundingStrike`) contain only the suffixes discovered in the raw data, so they may be empty objects.
+
+---
+
+## Returned type tree
 
 ### WarlordsStats
 
+The root object returned by `parseWarlords`.
+
 ```ts
-export interface WarlordsStats {
+interface WarlordsStats {
   readonly coins: number;
   readonly magicDust: number;
   readonly voidShards: number;
@@ -51,8 +64,16 @@ export interface WarlordsStats {
   readonly autoStrikeMode: boolean;
   readonly energyPowerups: boolean;
   readonly simplifiedResourcePack: boolean;
+  readonly displayDamage: boolean;
+  readonly showChatTitles: boolean;
+  readonly newControlEnable: number;
+  readonly newControlDisable: number;
+  readonly repairSalvageCommon: boolean;
+  readonly repairSalvageRare: boolean;
+  readonly repairSalvageEpic: boolean;
   readonly lifeLeech: WarlordsLifeLeech;
   readonly damageDelayed: WarlordsDamageDelayed;
+  readonly woundingStrike: Readonly<Record<string, number>>;
   readonly abilities: WarlordsAbilities;
   readonly crafting: WarlordsCrafting;
   readonly repair: WarlordsRepair;
@@ -71,62 +92,72 @@ export interface WarlordsStats {
 }
 ```
 
-| Field                      | Type                                                     | Raw source                                                       |
-| -------------------------- | -------------------------------------------------------- | ---------------------------------------------------------------- |
-| `coins`                    | `number`                                                 | `coins`                                                          |
-| `magicDust`                | `number`                                                 | `magic_dust`                                                     |
-| `voidShards`               | `number`                                                 | `void_shards`                                                    |
-| `kills`                    | `number`                                                 | `kills`                                                          |
-| `deaths`                   | `number`                                                 | `deaths`                                                         |
-| `assists`                  | `number`                                                 | `assists`                                                        |
-| `wins`                     | `number`                                                 | `wins`                                                           |
-| `losses`                   | `number`                                                 | `losses`                                                         |
-| `winsBlu`                  | `number`                                                 | `wins_blu`                                                       |
-| `winsRed`                  | `number`                                                 | `wins_red`                                                       |
-| `winStreak`                | `number`                                                 | `win_streak`                                                     |
-| `playStreak`               | `number`                                                 | `play_streak`                                                    |
-| `damage`                   | `number`                                                 | `damage`                                                         |
-| `healing`                  | `number`                                                 | `heal`                                                           |
-| `damagePrevented`          | `number`                                                 | `damage_prevented`                                               |
-| `damageTaken`              | `number`                                                 | `damage_taken`                                                   |
-| `penalty`                  | `number`                                                 | `penalty`                                                        |
-| `mvpCount`                 | `number`                                                 | `mvp_count`                                                      |
-| `powerupsCollected`        | `number`                                                 | `powerups_collected`                                             |
-| `afkWarned`                | `number`                                                 | `afk_warned`                                                     |
-| `brokenInventory`          | `number`                                                 | `broken_inventory`                                               |
-| `legendaryBrokenInventory` | `number`                                                 | `legendary_broken_inventory`                                     |
-| `rewardInventory`          | `number`                                                 | `reward_inventory`                                               |
-| `currentWeapon`            | `number`                                                 | `current_weapon`                                                 |
-| `chosenClass`              | `string`                                                 | `chosen_class`                                                   |
-| `selectedMount`            | `string`                                                 | `selected_mount`                                                 |
-| `hints`                    | `boolean`                                                | `hints`                                                          |
-| `hotkeyMode`               | `boolean`                                                | `hotkeymode`                                                     |
-| `hidePrestige`             | `boolean`                                                | `hide_prestige`                                                  |
-| `firstDiscountUsed`        | `boolean`                                                | `first-discount-used`                                            |
-| `autoStrikeMode`           | `boolean`                                                | `autostrikemode`                                                 |
-| `energyPowerups`           | `boolean`                                                | `energyPowerups`                                                 |
-| `simplifiedResourcePack`   | `boolean`                                                | `simplifiedresourcepack`                                         |
-| `lifeLeech`                | `WarlordsLifeLeech`                                      | `life_leeched*` fields                                           |
-| `damageDelayed`            | `WarlordsDamageDelayed`                                  | `damage_delayed*` fields                                         |
-| `abilities`                | `WarlordsAbilities`                                      | ability fields                                                   |
-| `crafting`                 | `WarlordsCrafting`                                       | crafting fields                                                  |
-| `repair`                   | `WarlordsRepair`                                         | `repaired*` fields                                               |
-| `salvage`                  | `WarlordsSalvage`                                        | `salvaged_*` fields                                              |
-| `modes`                    | `WarlordsModes`                                          | per-mode fields                                                  |
-| `classes`                  | `Readonly<Record<WarlordsClassId, WarlordsClassStats>>`  | per-class fields                                                 |
-| `loadouts`                 | `Readonly<Record<WarlordsBaseClassId, WarlordsLoadout>>` | `<class>_*` loadout fields                                       |
-| `activeBoosts`             | `Readonly<Record<WarlordsSpecClassId, string>>`          | `active_boost.<spec>`                                            |
-| `chatOptions`              | `WarlordsChatOptions`                                    | `chat_option_*` fields                                           |
-| `leaderboardSettings`      | `WarlordsLeaderboardSettings`                            | `leaderboardSettings`                                            |
-| `privateGames`             | `WarlordsPrivateGames`                                   | `privategames`                                                   |
-| `weaponInventory`          | `readonly WarlordsWeapon[]`                              | `weapon_inventory` (object entries only; `[]` when not an array) |
-| `boundWeapon`              | `WarlordsBoundWeapons`                                   | `bound_weapon`                                                   |
-| `prestiged`                | `readonly string[]`                                      | `prestiged` (string entries only; `[]` when not an array)        |
-| `packages`                 | `readonly string[]`                                      | `packages` (string entries only; `[]` when not an array)         |
+| Field                      | Type                                                     | Raw source / notes                                            |
+| -------------------------- | -------------------------------------------------------- | ------------------------------------------------------------- |
+| `coins`                    | `number`                                                 | `coins`                                                       |
+| `magicDust`                | `number`                                                 | `magic_dust`                                                  |
+| `voidShards`               | `number`                                                 | `void_shards`                                                 |
+| `kills`                    | `number`                                                 | `kills`                                                       |
+| `deaths`                   | `number`                                                 | `deaths`                                                      |
+| `assists`                  | `number`                                                 | `assists`                                                     |
+| `wins`                     | `number`                                                 | `wins`                                                        |
+| `losses`                   | `number`                                                 | `losses`                                                      |
+| `winsBlu`                  | `number`                                                 | `wins_blu`                                                    |
+| `winsRed`                  | `number`                                                 | `wins_red`                                                    |
+| `winStreak`                | `number`                                                 | `win_streak`                                                  |
+| `playStreak`               | `number`                                                 | `play_streak`                                                 |
+| `damage`                   | `number`                                                 | `damage`                                                      |
+| `healing`                  | `number`                                                 | `heal`                                                        |
+| `damagePrevented`          | `number`                                                 | `damage_prevented`                                            |
+| `damageTaken`              | `number`                                                 | `damage_taken`                                                |
+| `penalty`                  | `number`                                                 | `penalty`                                                     |
+| `mvpCount`                 | `number`                                                 | `mvp_count`                                                   |
+| `powerupsCollected`        | `number`                                                 | `powerups_collected`                                          |
+| `afkWarned`                | `number`                                                 | `afk_warned`                                                  |
+| `brokenInventory`          | `number`                                                 | `broken_inventory`                                            |
+| `legendaryBrokenInventory` | `number`                                                 | `legendary_broken_inventory`                                  |
+| `rewardInventory`          | `number`                                                 | `reward_inventory`                                            |
+| `currentWeapon`            | `number`                                                 | `current_weapon`                                              |
+| `chosenClass`              | `string`                                                 | `chosen_class`                                                |
+| `selectedMount`            | `string`                                                 | `selected_mount`                                              |
+| `hints`                    | `boolean`                                                | `hints`                                                       |
+| `hotkeyMode`               | `boolean`                                                | `hotkeymode`                                                  |
+| `hidePrestige`             | `boolean`                                                | `hide_prestige`                                               |
+| `firstDiscountUsed`        | `boolean`                                                | `first-discount-used`                                         |
+| `autoStrikeMode`           | `boolean`                                                | `autostrikemode`                                              |
+| `energyPowerups`           | `boolean`                                                | `energyPowerups`                                              |
+| `simplifiedResourcePack`   | `boolean`                                                | `simplifiedresourcepack`                                      |
+| `displayDamage`            | `boolean`                                                | `display_damage`                                              |
+| `showChatTitles`           | `boolean`                                                | `show_chat_titles`                                            |
+| `newControlEnable`         | `number`                                                 | `newcontrol_enable`                                           |
+| `newControlDisable`        | `number`                                                 | `newcontrol_disable`                                          |
+| `repairSalvageCommon`      | `boolean`                                                | `repair_salvage_common`                                       |
+| `repairSalvageRare`        | `boolean`                                                | `repair_salvage_rare`                                         |
+| `repairSalvageEpic`        | `boolean`                                                | `repair_salvage_epic`                                         |
+| `lifeLeech`                | `WarlordsLifeLeech`                                      | `life_leeched` plus `life_leeched_*` per-class                |
+| `damageDelayed`            | `WarlordsDamageDelayed`                                  | `damage_delayed` plus `damage_delayed_*` per-class            |
+| `woundingStrike`           | `Readonly<Record<string, number>>`                       | All `wounding_strike_*` keys, with the prefix stripped        |
+| `abilities`                | `WarlordsAbilities`                                      | Fixed ability roster (see below)                              |
+| `crafting`                 | `WarlordsCrafting`                                       | crafting fields                                               |
+| `repair`                   | `WarlordsRepair`                                         | `repaired*` fields                                            |
+| `salvage`                  | `WarlordsSalvage`                                        | `salvaged_*` fields                                           |
+| `modes`                    | `WarlordsModes`                                          | per-mode fields                                               |
+| `classes`                  | `Readonly<Record<WarlordsClassId, WarlordsClassStats>>`  | one entry per class (see below)                               |
+| `loadouts`                 | `Readonly<Record<WarlordsBaseClassId, WarlordsLoadout>>` | one entry per base class                                      |
+| `activeBoosts`             | `Readonly<Record<WarlordsSpecClassId, string>>`          | `active_boost.<spec>`                                         |
+| `chatOptions`              | `WarlordsChatOptions`                                    | `chat_option_*` fields                                        |
+| `leaderboardSettings`      | `WarlordsLeaderboardSettings`                            | `leaderboardSettings`                                         |
+| `privateGames`             | `WarlordsPrivateGames`                                   | `privategames`                                                |
+| `weaponInventory`          | `readonly WarlordsWeapon[]`                              | `weapon_inventory` (object entries only; `[]` when not array) |
+| `boundWeapon`              | `WarlordsBoundWeapons`                                   | `bound_weapon`                                                |
+| `prestiged`                | `readonly string[]`                                      | `prestiged` (string entries only; `[]` when not array)        |
+| `packages`                 | `readonly string[]`                                      | `packages` (string entries only; `[]` when not array)         |
+
+---
 
 ## Key types
 
-The `classes`, `loadouts`, and `activeBoosts` records are keyed by string-literal union types derived from the Warlords class roster.
+The `classes`, `loadouts`, and `activeBoosts` records are keyed by string-literal union types derived from the Warlords class roster. These helper aliases are internal (not exported); they are shown here to document the record key sets.
 
 ```ts
 type WarlordsClassId =
@@ -161,14 +192,14 @@ type WarlordsSpecClassId =
   | WarlordsShamanSpec;
 ```
 
-These helper type aliases are internal (not exported); they are shown here to document the record key sets used by `WarlordsStats`.
+`activeBoosts` contains one entry for each `WarlordsSpecClassId` (the 12 spec classes), each read from `active_boost.<spec>`.
 
 ### WarlordsClassStats
 
-Per-class aggregate stats. One entry exists for each `WarlordsClassId`.
+Per-class aggregate stats. One entry exists for each `WarlordsClassId` (16 classes).
 
 ```ts
-export interface WarlordsClassStats {
+interface WarlordsClassStats {
   readonly wins: number;
   readonly losses: number;
   readonly gamesPlayed: number;
@@ -192,7 +223,7 @@ export interface WarlordsClassStats {
 Per-base-class loadout configuration. One entry exists for each `WarlordsBaseClassId`.
 
 ```ts
-export interface WarlordsLoadout {
+interface WarlordsLoadout {
   readonly spec: string;
   readonly armorSelection: number;
   readonly helmetSelection: number;
@@ -223,10 +254,10 @@ export interface WarlordsLoadout {
 
 ### WarlordsWeapon
 
-A single weapon entry within `weaponInventory`.
+A single weapon entry within `weaponInventory`. Each scalar field maps to the raw key of the same name on the weapon entry; `spec` is read from the nested `spec` object.
 
 ```ts
-export interface WarlordsWeapon {
+interface WarlordsWeapon {
   readonly id: number;
   readonly spec: WarlordsWeaponSpec;
   readonly material: string;
@@ -242,19 +273,39 @@ export interface WarlordsWeapon {
   readonly movement: number;
   readonly crafted: boolean;
   readonly playStreak: boolean;
+  readonly unlocked: boolean;
   readonly upgradeMax: number;
   readonly upgradeTimes: number;
 }
 ```
 
-Each field maps to the raw key of the same name on the weapon entry. `spec` is read from the nested `spec` object; `crafted` maps to `crafted` and `playStreak` to `playStreak`.
+| Field          | Raw source     |
+| -------------- | -------------- |
+| `id`           | `id`           |
+| `spec`         | `spec`         |
+| `material`     | `material`     |
+| `category`     | `category`     |
+| `ability`      | `ability`      |
+| `abilityBoost` | `abilityBoost` |
+| `damage`       | `damage`       |
+| `energy`       | `energy`       |
+| `chance`       | `chance`       |
+| `multiplier`   | `multiplier`   |
+| `health`       | `health`       |
+| `cooldown`     | `cooldown`     |
+| `movement`     | `movement`     |
+| `crafted`      | `crafted`      |
+| `playStreak`   | `playStreak`   |
+| `unlocked`     | `unlocked`     |
+| `upgradeMax`   | `upgradeMax`   |
+| `upgradeTimes` | `upgradeTimes` |
 
 ### WarlordsWeaponSpec
 
 The nested `spec` object of a weapon.
 
 ```ts
-export interface WarlordsWeaponSpec {
+interface WarlordsWeaponSpec {
   readonly spec: number;
   readonly playerClass: number;
 }
@@ -270,7 +321,7 @@ export interface WarlordsWeaponSpec {
 Per-game-mode stat groups.
 
 ```ts
-export interface WarlordsModes {
+interface WarlordsModes {
   readonly captureTheFlag: WarlordsCaptureTheFlagStats;
   readonly domination: WarlordsDominationStats;
   readonly teamDeathmatch: WarlordsTeamDeathmatchStats;
@@ -280,63 +331,67 @@ export interface WarlordsModes {
 ### WarlordsCaptureTheFlagStats
 
 ```ts
-export interface WarlordsCaptureTheFlagStats {
+interface WarlordsCaptureTheFlagStats {
   readonly kills: number;
   readonly wins: number;
   readonly winsTeamA: number;
   readonly winsTeamB: number;
   readonly winsBlu: number;
   readonly winsRed: number;
+  readonly weeklyWinsTeamA: number;
   readonly flagConquerSelf: number;
   readonly flagConquerTeam: number;
   readonly flagReturns: number;
 }
 ```
 
-| Field             | Raw source                |
-| ----------------- | ------------------------- |
-| `kills`           | `kills_capturetheflag`    |
-| `wins`            | `wins_capturetheflag`     |
-| `winsTeamA`       | `wins_capturetheflag_a`   |
-| `winsTeamB`       | `wins_capturetheflag_b`   |
-| `winsBlu`         | `wins_capturetheflag_blu` |
-| `winsRed`         | `wins_capturetheflag_red` |
-| `flagConquerSelf` | `flag_conquer_self`       |
-| `flagConquerTeam` | `flag_conquer_team`       |
-| `flagReturns`     | `flag_returns`            |
+| Field             | Raw source                     |
+| ----------------- | ------------------------------ |
+| `kills`           | `kills_capturetheflag`         |
+| `wins`            | `wins_capturetheflag`          |
+| `winsTeamA`       | `wins_capturetheflag_a`        |
+| `winsTeamB`       | `wins_capturetheflag_b`        |
+| `winsBlu`         | `wins_capturetheflag_blu`      |
+| `winsRed`         | `wins_capturetheflag_red`      |
+| `weeklyWinsTeamA` | `weekly_wins_capturetheflag_a` |
+| `flagConquerSelf` | `flag_conquer_self`            |
+| `flagConquerTeam` | `flag_conquer_team`            |
+| `flagReturns`     | `flag_returns`                 |
 
 ### WarlordsDominationStats
 
 ```ts
-export interface WarlordsDominationStats {
+interface WarlordsDominationStats {
   readonly kills: number;
   readonly wins: number;
   readonly winsTeamA: number;
   readonly winsTeamB: number;
   readonly winsBlu: number;
   readonly winsRed: number;
+  readonly weeklyWinsTeamA: number;
   readonly pointCaptures: number;
   readonly pointDefends: number;
   readonly totalScore: number;
 }
 ```
 
-| Field           | Raw source               |
-| --------------- | ------------------------ |
-| `kills`         | `kills_domination`       |
-| `wins`          | `wins_domination`        |
-| `winsTeamA`     | `wins_domination_a`      |
-| `winsTeamB`     | `wins_domination_b`      |
-| `winsBlu`       | `wins_domination_blu`    |
-| `winsRed`       | `wins_domination_red`    |
-| `pointCaptures` | `dom_point_captures`     |
-| `pointDefends`  | `dom_point_defends`      |
-| `totalScore`    | `total_domination_score` |
+| Field             | Raw source                 |
+| ----------------- | -------------------------- |
+| `kills`           | `kills_domination`         |
+| `wins`            | `wins_domination`          |
+| `winsTeamA`       | `wins_domination_a`        |
+| `winsTeamB`       | `wins_domination_b`        |
+| `winsBlu`         | `wins_domination_blu`      |
+| `winsRed`         | `wins_domination_red`      |
+| `weeklyWinsTeamA` | `weekly_wins_domination_a` |
+| `pointCaptures`   | `dom_point_captures`       |
+| `pointDefends`    | `dom_point_defends`        |
+| `totalScore`      | `total_domination_score`   |
 
 ### WarlordsTeamDeathmatchStats
 
 ```ts
-export interface WarlordsTeamDeathmatchStats {
+interface WarlordsTeamDeathmatchStats {
   readonly kills: number;
   readonly wins: number;
   readonly winsTeamA: number;
@@ -357,60 +412,42 @@ export interface WarlordsTeamDeathmatchStats {
 
 ### WarlordsLifeLeech
 
+`total` is read from `life_leeched`; `byClass` collects every `life_leeched_*` key with the prefix stripped.
+
 ```ts
-export interface WarlordsLifeLeech {
+interface WarlordsLifeLeech {
   readonly total: number;
-  readonly warrior: number;
-  readonly berserker: number;
+  readonly byClass: Readonly<Record<string, number>>;
 }
 ```
-
-| Field       | Raw source               |
-| ----------- | ------------------------ |
-| `total`     | `life_leeched`           |
-| `warrior`   | `life_leeched_warrior`   |
-| `berserker` | `life_leeched_berserker` |
 
 ### WarlordsDamageDelayed
 
+`total` is read from `damage_delayed`; `byClass` collects every `damage_delayed_*` key with the prefix stripped.
+
 ```ts
-export interface WarlordsDamageDelayed {
+interface WarlordsDamageDelayed {
   readonly total: number;
-  readonly shaman: number;
-  readonly spiritguard: number;
+  readonly byClass: Readonly<Record<string, number>>;
 }
 ```
-
-| Field         | Raw source                   |
-| ------------- | ---------------------------- |
-| `total`       | `damage_delayed`             |
-| `shaman`      | `damage_delayed_shaman`      |
-| `spiritguard` | `damage_delayed_spiritguard` |
 
 ### WarlordsAbilities
 
+An index-signature record of ability usage counts. The parser populates one entry for every ability in the fixed roster, each read from its raw snake_case key.
+
 ```ts
-export interface WarlordsAbilities {
-  readonly arcaneShatter: number;
-  readonly burstChain: number;
-  readonly dimensionalWarp: number;
-  readonly flameBreath: number;
-  readonly meteor: number;
+interface WarlordsAbilities {
+  readonly [ability: string]: number;
 }
 ```
 
-| Field             | Raw source         |
-| ----------------- | ------------------ |
-| `arcaneShatter`   | `arcane_shatter`   |
-| `burstChain`      | `burst_chain`      |
-| `dimensionalWarp` | `dimensional_warp` |
-| `flameBreath`     | `flame_breath`     |
-| `meteor`          | `meteor`           |
+Ability keys: `accelerated_spike`, `acid_rain`, `arcane_recluse`, `arcane_reflection`, `arcane_shatter`, `arm_of_the_almighty`, `augmented_chains`, `berserkers_fury`, `blade_of_willpower`, `blizzard_breath`, `blood_frenzy`, `burst_chain`, `chilly_aura`, `clairvoyance`, `devils_debt`, `dimensional_warp`, `divine_effulgence`, `divine_purification`, `divine_vindication`, `earthbound_infusion`, `electromagnetic_chains`, `eye_of_the_storm`, `fervent_force`, `flame_breath`, `frost_missile`, `galvanized_spark`, `greater_sacrality`, `hammer_of_judgement`, `healing_link`, `heroic_intervention`, `lightspeed_infusion`, `lustrous_crown`, `megalithic_boulder`, `meteor`, `mighty_fists`, `one_man_army`, `orbs_of_life`, `permeating_link`, `piercing_radiance`, `rallying_presence`, `reckless_ascent`, `seismic_shift`, `seraphim_shield`, `smothering_soulbind`, `solitary_resistance`, `sovereign_solitude`, `spiritual_deflection`, `steadfast_warp`, `symphonic_windfury`, `totemic_boon`, `transistor`, `typhoon_bolt`, `undying_steed`, `vigorous_infusion`, `vitality_boost`, `warding_wrath`, `wrath_of_the_fallen`, `zealous_mark`.
 
 ### WarlordsCrafting
 
 ```ts
-export interface WarlordsCrafting {
+interface WarlordsCrafting {
   readonly crafted: number;
   readonly craftedRare: number;
   readonly craftedEpic: number;
@@ -428,10 +465,13 @@ export interface WarlordsCrafting {
   readonly upgradePlayStreak: number;
   readonly upgradePlayStreakEpic: number;
   readonly upgradePlayStreakLegendary: number;
+  readonly upgradeRandomLegendary: number;
   readonly unlockCrafted: number;
   readonly unlockCraftedLegendary: number;
   readonly unlockPlayStreak: number;
   readonly unlockPlayStreakLegendary: number;
+  readonly unlockRandom: number;
+  readonly unlockRandomLegendary: number;
 }
 ```
 
@@ -454,15 +494,18 @@ export interface WarlordsCrafting {
 | `upgradePlayStreak`          | `upgrade_playstreak`           |
 | `upgradePlayStreakEpic`      | `upgrade_playstreak_epic`      |
 | `upgradePlayStreakLegendary` | `upgrade_playstreak_legendary` |
+| `upgradeRandomLegendary`     | `upgrade_random_legendary`     |
 | `unlockCrafted`              | `unlock_crafted`               |
 | `unlockCraftedLegendary`     | `unlock_crafted_legendary`     |
 | `unlockPlayStreak`           | `unlock_playstreak`            |
 | `unlockPlayStreakLegendary`  | `unlock_playstreak_legendary`  |
+| `unlockRandom`               | `unlock_random`                |
+| `unlockRandomLegendary`      | `unlock_random_legendary`      |
 
 ### WarlordsRepair
 
 ```ts
-export interface WarlordsRepair {
+interface WarlordsRepair {
   readonly total: number;
   readonly common: number;
   readonly rare: number;
@@ -482,7 +525,7 @@ export interface WarlordsRepair {
 ### WarlordsSalvage
 
 ```ts
-export interface WarlordsSalvage {
+interface WarlordsSalvage {
   readonly weapons: number;
   readonly weaponsCommon: number;
   readonly weaponsRare: number;
@@ -506,29 +549,33 @@ export interface WarlordsSalvage {
 ### WarlordsChatOptions
 
 ```ts
-export interface WarlordsChatOptions {
+interface WarlordsChatOptions {
   readonly damage: string;
+  readonly energy: string;
   readonly errorMessages: string;
   readonly heal: string;
   readonly killFeed: string;
   readonly misc: string;
+  readonly shouts: string;
 }
 ```
 
 | Field           | Raw source                   |
 | --------------- | ---------------------------- |
 | `damage`        | `chat_option_damage`         |
+| `energy`        | `chat_option_energy`         |
 | `errorMessages` | `chat_option_error_messages` |
 | `heal`          | `chat_option_heal`           |
 | `killFeed`      | `chat_option_kill_feed`      |
 | `misc`          | `chat_option_misc`           |
+| `shouts`        | `chat_option_shouts`         |
 
 ### WarlordsLeaderboardSettings
 
 Read from the raw `leaderboardSettings` object.
 
 ```ts
-export interface WarlordsLeaderboardSettings {
+interface WarlordsLeaderboardSettings {
   readonly mode: string;
   readonly resetType: string;
 }
@@ -544,7 +591,7 @@ export interface WarlordsLeaderboardSettings {
 Read from the raw `privategames` object.
 
 ```ts
-export interface WarlordsPrivateGames {
+interface WarlordsPrivateGames {
   readonly teamSelector: boolean;
   readonly noRegeneration: boolean;
   readonly nobleSteeds: boolean;
@@ -553,26 +600,28 @@ export interface WarlordsPrivateGames {
   readonly horseSpeed: string;
   readonly health: string;
   readonly points: string;
+  readonly specializations: string;
 }
 ```
 
-| Field            | Raw source        |
-| ---------------- | ----------------- |
-| `teamSelector`   | `team_selector`   |
-| `noRegeneration` | `no_regeneration` |
-| `nobleSteeds`    | `noble_steeds`    |
-| `weapon`         | `weapon`          |
-| `level`          | `level`           |
-| `horseSpeed`     | `horse_speed`     |
-| `health`         | `health`          |
-| `points`         | `points`          |
+| Field             | Raw source        |
+| ----------------- | ----------------- |
+| `teamSelector`    | `team_selector`   |
+| `noRegeneration`  | `no_regeneration` |
+| `nobleSteeds`     | `noble_steeds`    |
+| `weapon`          | `weapon`          |
+| `level`           | `level`           |
+| `horseSpeed`      | `horse_speed`     |
+| `health`          | `health`          |
+| `points`          | `points`          |
+| `specializations` | `specializations` |
 
 ### WarlordsBoundWeapons
 
 Bound weapon ids per base class and spec, read from the raw `bound_weapon` object.
 
 ```ts
-export interface WarlordsBoundWeapons {
+interface WarlordsBoundWeapons {
   readonly mage: Readonly<Record<WarlordsMageSpec, number>>;
   readonly warrior: Readonly<Record<WarlordsWarriorSpec, number>>;
   readonly paladin: Readonly<Record<WarlordsPaladinSpec, number>>;

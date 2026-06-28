@@ -30,6 +30,7 @@ export interface PaintballMapVotes {
   readonly Outback: number;
   readonly Siege: number;
   readonly Swamps: number;
+  readonly Tide: number;
   readonly Victorian: number;
 }
 
@@ -49,6 +50,7 @@ const PAINTBALL_MAP_NAMES = [
   "Outback",
   "Siege",
   "Swamps",
+  "Tide",
   "Victorian",
 ] as const;
 
@@ -58,9 +60,11 @@ export interface PaintballStats {
   readonly deaths: number;
   readonly wins: number;
   readonly shotsFired: number;
+  readonly shots: number;
   readonly killstreaks: number;
   readonly headstart: number;
   readonly forcefieldTime: number;
+  readonly instantRespawn: boolean;
   readonly showKillPrefix: boolean;
   readonly selectedKillPrefix: string;
   readonly hat: string;
@@ -123,9 +127,11 @@ export function parsePaintball(
     deaths: num(paintball, "deaths"),
     wins: num(paintball, "wins"),
     shotsFired: num(paintball, "shots_fired"),
+    shots: num(paintball, "shots"),
     killstreaks: num(paintball, "killstreaks"),
     headstart: num(paintball, "headstart"),
     forcefieldTime: num(paintball, "forcefieldTime"),
+    instantRespawn: bool(paintball, "instant_respawn"),
     showKillPrefix: bool(paintball, "showKillPrefix"),
     selectedKillPrefix: str(paintball, "selectedKillPrefix"),
     hat: str(paintball, "hat"),

@@ -44,6 +44,11 @@ export interface PitEndedContract {
   readonly key: string;
 }
 
+export interface PitShopThrottle {
+  readonly count: number;
+  readonly lastEpochDay: number;
+}
+
 export interface PitChatOptions {
   readonly bounties: boolean;
   readonly killFeed: boolean;
@@ -94,6 +99,7 @@ export interface PitCombatStats {
   readonly obsidianBroken: number;
   readonly cashEarned: number;
   readonly goldFromFarming: number;
+  readonly goldFromSellingFish: number;
   readonly chatMessages: number;
   readonly contractsStarted: number;
   readonly contractsCompleted: number;
@@ -129,6 +135,7 @@ export interface PitCombatStats {
   readonly luckyDiamondPieces: number;
   readonly sewerTreasuresFound: number;
   readonly wheatFarmed: number;
+  readonly hiddenJewelTriggers: number;
 }
 
 export interface PitProfile {
@@ -145,6 +152,13 @@ export interface PitProfile {
   readonly cheapMilk: boolean;
   readonly disableSpawnItems: boolean;
   readonly refundedGoldenPickaxe: boolean;
+  readonly apolloEnabled: boolean;
+  readonly dropConfirmDisabled: boolean;
+  readonly hatGlintEnabled: boolean;
+  readonly fishFishedToday: number;
+  readonly lastFishFished: number;
+  readonly lastLycanthropy: number;
+  readonly reconessenceDay: number;
   readonly lastSave: number;
   readonly lastContract: number;
   readonly lastMidfightDisconnect: number;
@@ -157,6 +171,10 @@ export interface PitProfile {
   readonly selectedKillstreaks: readonly string[];
   readonly cashDuringPrestige: readonly number[];
   readonly hotbarFavorites: readonly number[];
+  readonly recentUberstreaks: readonly number[];
+  readonly goldStackStreaks: Readonly<Record<string, number>>;
+  readonly xpStackStreaks: Readonly<Record<string, number>>;
+  readonly shopsThrottle: Readonly<Record<string, PitShopThrottle>>;
   readonly chatOptions: PitChatOptions;
   readonly genesis: PitGenesis;
   readonly kingQuest: PitKingQuest;
@@ -165,6 +183,7 @@ export interface PitProfile {
   readonly prestiges: readonly PitPrestige[];
   readonly bounties: readonly PitBounty[];
   readonly goldTransactions: readonly PitGoldTransaction[];
+  readonly contract: PitEndedContract | null;
   readonly endedContracts: readonly PitEndedContract[];
   readonly contractChoices: readonly unknown[];
   readonly outgoingOffers: readonly unknown[];
@@ -306,10 +325,8 @@ function parseGoldTransactions(
   }));
 }
 
-function parseEndedContracts(
-  profile: Record<string, unknown>,
-): readonly PitEndedContract[] {
-  return objectArray(profile.ended_contracts).map((entry) => ({
+function parseContract(entry: Record<string, unknown>): PitEndedContract {
+  return {
     difficulty: str(entry, "difficulty"),
     goldReward: num(entry, "gold_reward"),
     chunkOfVilesReward: num(entry, "chunk_of_viles_reward"),
@@ -318,7 +335,52 @@ function parseEndedContracts(
     completionDate: num(entry, "completion_date"),
     remainingTicks: num(entry, "remaining_ticks"),
     key: str(entry, "key"),
-  }));
+  };
+}
+
+function parseActiveContract(
+  profile: Record<string, unknown>,
+): PitEndedContract | null {
+  const raw = profile.contract;
+  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
+    return null;
+  }
+  return parseContract(raw as Record<string, unknown>);
+}
+
+function parseEndedContracts(
+  profile: Record<string, unknown>,
+): readonly PitEndedContract[] {
+  return objectArray(profile.ended_contracts).map(parseContract);
+}
+
+function parseShopsThrottle(
+  profile: Record<string, unknown>,
+): Readonly<Record<string, PitShopThrottle>> {
+  const raw = obj(profile, "shops_throttle");
+  const result: Record<string, PitShopThrottle> = {};
+  for (const key of Object.keys(raw)) {
+    const entry = raw[key];
+    if (typeof entry === "object" && entry !== null && !Array.isArray(entry)) {
+      const record = entry as Record<string, unknown>;
+      result[key] = {
+        count: num(record, "count"),
+        lastEpochDay: num(record, "lastEpochDay"),
+      };
+    }
+  }
+  return result;
+}
+
+function indexedNumberMap(
+  profile: Record<string, unknown>,
+  prefix: string,
+): Record<string, number> {
+  const result: Record<string, number> = {};
+  for (const key of indexedKeys(profile, prefix)) {
+    result[key.slice(prefix.length)] = num(profile, key);
+  }
+  return result;
 }
 
 function parseChatOptions(profile: Record<string, unknown>): PitChatOptions {
@@ -369,6 +431,13 @@ function parseProfile(profile: Record<string, unknown>): PitProfile {
     cheapMilk: bool(profile, "cheap_milk"),
     disableSpawnItems: bool(profile, "disable_spawn_items"),
     refundedGoldenPickaxe: bool(profile, "refunded_golden_pickaxe"),
+    apolloEnabled: bool(profile, "apollo_enabled"),
+    dropConfirmDisabled: bool(profile, "drop_confirm_disabled"),
+    hatGlintEnabled: bool(profile, "hat_glint_enabled"),
+    fishFishedToday: num(profile, "fish_fished_today"),
+    lastFishFished: num(profile, "last_fish_fished"),
+    lastLycanthropy: num(profile, "last_lycanthropy"),
+    reconessenceDay: num(profile, "reconessence_day"),
     lastSave: num(profile, "last_save"),
     lastContract: num(profile, "last_contract"),
     lastMidfightDisconnect: num(profile, "last_midfight_disconnect"),
@@ -392,6 +461,10 @@ function parseProfile(profile: Record<string, unknown>): PitProfile {
       (key) => num(profile, key),
     ),
     hotbarFavorites: numberArray(profile.hotbar_favorites),
+    recentUberstreaks: numberArray(profile.recent_uberstreaks),
+    goldStackStreaks: indexedNumberMap(profile, "gold_stack_streak_"),
+    xpStackStreaks: indexedNumberMap(profile, "xp_stack_streak_"),
+    shopsThrottle: parseShopsThrottle(profile),
     chatOptions: parseChatOptions(profile),
     genesis: parseGenesis(profile),
     kingQuest: {
@@ -405,6 +478,7 @@ function parseProfile(profile: Record<string, unknown>): PitProfile {
     prestiges: parsePrestiges(profile),
     bounties: parseBounties(profile),
     goldTransactions: parseGoldTransactions(profile),
+    contract: parseActiveContract(profile),
     endedContracts: parseEndedContracts(profile),
     contractChoices: unknownArray(profile.contract_choices),
     outgoingOffers: unknownArray(profile.outgoing_offers),
@@ -450,6 +524,7 @@ function parseCombat(combat: Record<string, unknown>): PitCombatStats {
     obsidianBroken: num(combat, "obsidian_broken"),
     cashEarned: num(combat, "cash_earned"),
     goldFromFarming: num(combat, "gold_from_farming"),
+    goldFromSellingFish: num(combat, "gold_from_selling_fish"),
     chatMessages: num(combat, "chat_messages"),
     contractsStarted: num(combat, "contracts_started"),
     contractsCompleted: num(combat, "contracts_completed"),
@@ -485,6 +560,7 @@ function parseCombat(combat: Record<string, unknown>): PitCombatStats {
     luckyDiamondPieces: num(combat, "lucky_diamond_pieces"),
     sewerTreasuresFound: num(combat, "sewer_treasures_found"),
     wheatFarmed: num(combat, "wheat_farmed"),
+    hiddenJewelTriggers: num(combat, "hidden_jewel_triggers"),
   };
 }
 

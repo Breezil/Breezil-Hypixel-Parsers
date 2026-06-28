@@ -1,211 +1,310 @@
 # SkyBlock Resources
 
-Parsers for the static SkyBlock resource endpoints (`/resources/skyblock/*`). Each function turns the raw Hypixel API JSON into a readonly, fully-typed object that mirrors the response field-for-field, with no computed or derived values.
+The resources module (`skyblock-resources.ts`) parses the static SkyBlock resource endpoints (`/resources/skyblock/*`). Each function mirrors the raw Hypixel API JSON field-for-field into readonly, fully-typed objects with no computed or derived values. Missing numbers become `0`, missing strings become `""`, boolean fields are `true` only when the raw value is exactly `true`, and epoch-ms timestamps become `Date` or `null`. Every parser returns `null` when its input is not a non-array object.
 
 ## parseSkyBlockSkills
 
 Parses the SkyBlock skill registry (`/resources/skyblock/skills`) into a typed object.
 
 ```ts
-export function parseSkyBlockSkills(
+function parseSkyBlockSkills(
   raw: Record<string, unknown>,
 ): SkyBlockSkillsResource | null;
 ```
 
-### Returned types
+### Null / empty behavior
 
-```ts
-export interface SkyBlockSkillsResource {
-  readonly lastUpdated: Date | null;
-  readonly version: string;
-  readonly skills: Record<string, SkyBlockSkill>;
-}
-
-export interface SkyBlockSkill {
-  readonly name: string;
-  readonly description: string;
-  readonly maxLevel: number;
-  readonly levels: SkyBlockSkillLevel[];
-}
-
-export interface SkyBlockSkillLevel {
-  readonly level: number;
-  readonly totalExpRequired: number;
-  readonly unlocks: string[];
-}
-```
-
-### Fields
-
-| Field                                 | Description                                                      |
-| ------------------------------------- | ---------------------------------------------------------------- |
-| `lastUpdated`                         | Timestamp the resource was last updated, or `null` if absent.    |
-| `version`                             | Resource version string.                                         |
-| `skills`                              | Map keyed by skill identifier to its `SkyBlockSkill` definition. |
-| `SkyBlockSkill.name`                  | Display name of the skill.                                       |
-| `SkyBlockSkill.description`           | Description text for the skill.                                  |
-| `SkyBlockSkill.maxLevel`              | Maximum attainable level.                                        |
-| `SkyBlockSkill.levels`                | Ordered list of level definitions.                               |
-| `SkyBlockSkillLevel.level`            | Level number.                                                    |
-| `SkyBlockSkillLevel.totalExpRequired` | Cumulative experience required to reach the level.               |
-| `SkyBlockSkillLevel.unlocks`          | Strings describing what the level unlocks.                       |
-
-### Null and empty behavior
-
-Returns `null` when `raw` is not an object. `lastUpdated` is `null` when the field is missing or unparseable. `skills` is an empty object when the block is absent, and each skill's `levels`/`unlocks` arrays are empty when those keys are absent.
+- Returns `null` when `raw` is not a non-array object.
+- `skills` is keyed by raw skill key; only object values are kept.
+- Each skill's `levels` is built from the raw `levels` array (non-object entries skipped); each level's `unlocks` is `[]` when missing or not an array.
+- `lastUpdated` is `null` when its epoch-ms timestamp is absent or unparseable.
 
 ## parseSkyBlockCollections
 
 Parses the SkyBlock collection registry (`/resources/skyblock/collections`) into a typed object.
 
 ```ts
-export function parseSkyBlockCollections(
+function parseSkyBlockCollections(
   raw: Record<string, unknown>,
 ): SkyBlockCollectionsResource | null;
 ```
 
-### Returned types
+### Null / empty behavior
 
-```ts
-export interface SkyBlockCollectionsResource {
-  readonly lastUpdated: Date | null;
-  readonly version: string;
-  readonly collections: Record<string, SkyBlockCollectionCategory>;
-}
-
-export interface SkyBlockCollectionCategory {
-  readonly name: string;
-  readonly items: Record<string, SkyBlockCollectionDefinition>;
-}
-
-export interface SkyBlockCollectionDefinition {
-  readonly name: string;
-  readonly maxTiers: number;
-  readonly tiers: SkyBlockCollectionTier[];
-}
-
-export interface SkyBlockCollectionTier {
-  readonly tier: number;
-  readonly amountRequired: number;
-  readonly unlocks: string[];
-}
-```
-
-### Fields
-
-| Field                                   | Description                                                                      |
-| --------------------------------------- | -------------------------------------------------------------------------------- |
-| `lastUpdated`                           | Timestamp the resource was last updated, or `null` if absent.                    |
-| `version`                               | Resource version string.                                                         |
-| `collections`                           | Map keyed by collection category identifier to its `SkyBlockCollectionCategory`. |
-| `SkyBlockCollectionCategory.name`       | Display name of the category.                                                    |
-| `SkyBlockCollectionCategory.items`      | Map keyed by item identifier to its `SkyBlockCollectionDefinition`.              |
-| `SkyBlockCollectionDefinition.name`     | Display name of the collection item.                                             |
-| `SkyBlockCollectionDefinition.maxTiers` | Maximum number of tiers.                                                         |
-| `SkyBlockCollectionDefinition.tiers`    | Ordered list of tier definitions.                                                |
-| `SkyBlockCollectionTier.tier`           | Tier number.                                                                     |
-| `SkyBlockCollectionTier.amountRequired` | Amount required to reach the tier.                                               |
-| `SkyBlockCollectionTier.unlocks`        | Strings describing what the tier unlocks.                                        |
-
-### Null and empty behavior
-
-Returns `null` when `raw` is not an object. `lastUpdated` is `null` when the field is missing or unparseable. `collections`, each category's `items`, and each definition's `tiers`/`unlocks` arrays are empty when their corresponding keys are absent.
+- Returns `null` when `raw` is not a non-array object.
+- `collections` is keyed by raw category key; `items` within each category is keyed by raw item key. Only object values are kept at both levels.
+- Each definition's `tiers` is built from the raw `tiers` array (non-object entries skipped); each tier's `unlocks` is `[]` when missing or not an array.
+- `lastUpdated` is `null` when absent or unparseable.
 
 ## parseSkyBlockElection
 
 Parses the SkyBlock election (`/resources/skyblock/election`) into a typed object.
 
 ```ts
-export function parseSkyBlockElection(
+function parseSkyBlockElection(
   raw: Record<string, unknown>,
 ): SkyBlockElectionResource | null;
 ```
 
-### Returned types
+### Null / empty behavior
+
+- Returns `null` when `raw` is not a non-array object.
+- `mayor` is `null` when the raw `mayor.name` is empty.
+- `lastElection` is read from the raw `mayor.election` object and is always present.
+- `currentElection` is `null` when the raw `current` field is not an object.
+- A candidate's `perks` (and the mayor's `perks`) are `[]` when the raw `perks` is missing or not an array.
+- `minister` is `null` when the raw `mayor.minister` is not an object; a minister's `perk` is `null` when the raw `minister.perk` is not an object.
+- `lastUpdated` is `null` when absent or unparseable.
+
+## parseSkyBlockBingo
+
+Parses the SkyBlock bingo event resource (`/resources/skyblock/bingo`) into a typed object.
 
 ```ts
-export interface SkyBlockElectionResource {
+function parseSkyBlockBingo(
+  raw: Record<string, unknown>,
+): SkyBlockBingoResource | null;
+```
+
+### Null / empty behavior
+
+- Returns `null` when `raw` is not a non-array object.
+- `goals` is built from the raw `goals` array (non-object entries skipped); each goal's `fullLore` and `tiers` are `[]` when missing or not arrays.
+- A goal's `requiredAmount` is the raw `requiredAmount` when it is a number, otherwise `null`.
+- `lastUpdated`, `start`, and `end` are `null` when their epoch-ms timestamps are absent or unparseable.
+
+---
+
+## Returned type tree
+
+### SkyBlockSkillsResource
+
+The object returned by `parseSkyBlockSkills`.
+
+```ts
+interface SkyBlockSkillsResource {
+  readonly lastUpdated: Date | null;
+  readonly version: string;
+  readonly skills: Record<string, SkyBlockSkill>;
+}
+```
+
+| Field         | Notes                             |
+| ------------- | --------------------------------- |
+| `lastUpdated` | Resource last-updated timestamp.  |
+| `version`     | Resource version (raw `version`). |
+| `skills`      | Skills keyed by raw skill key.    |
+
+### SkyBlockSkill
+
+```ts
+interface SkyBlockSkill {
+  readonly name: string;
+  readonly description: string;
+  readonly maxLevel: number;
+  readonly levels: SkyBlockSkillLevel[];
+}
+```
+
+| Field         | Raw key       |
+| ------------- | ------------- |
+| `name`        | `name`        |
+| `description` | `description` |
+| `maxLevel`    | `maxLevel`    |
+| `levels`      | `levels`      |
+
+### SkyBlockSkillLevel
+
+```ts
+interface SkyBlockSkillLevel {
+  readonly level: number;
+  readonly totalExpRequired: number;
+  readonly unlocks: string[];
+}
+```
+
+| Field              | Raw key            |
+| ------------------ | ------------------ |
+| `level`            | `level`            |
+| `totalExpRequired` | `totalExpRequired` |
+| `unlocks`          | `unlocks`          |
+
+### SkyBlockCollectionsResource
+
+The object returned by `parseSkyBlockCollections`.
+
+```ts
+interface SkyBlockCollectionsResource {
+  readonly lastUpdated: Date | null;
+  readonly version: string;
+  readonly collections: Record<string, SkyBlockCollectionCategory>;
+}
+```
+
+| Field         | Notes                                 |
+| ------------- | ------------------------------------- |
+| `lastUpdated` | Resource last-updated timestamp.      |
+| `version`     | Resource version (raw `version`).     |
+| `collections` | Categories keyed by raw category key. |
+
+### SkyBlockCollectionCategory
+
+```ts
+interface SkyBlockCollectionCategory {
+  readonly name: string;
+  readonly items: Record<string, SkyBlockCollectionDefinition>;
+}
+```
+
+| Field   | Notes                                    |
+| ------- | ---------------------------------------- |
+| `name`  | Category name (raw `name`).              |
+| `items` | Collection definitions keyed by raw key. |
+
+### SkyBlockCollectionDefinition
+
+```ts
+interface SkyBlockCollectionDefinition {
+  readonly name: string;
+  readonly maxTiers: number;
+  readonly tiers: SkyBlockCollectionTier[];
+}
+```
+
+| Field      | Raw key    |
+| ---------- | ---------- |
+| `name`     | `name`     |
+| `maxTiers` | `maxTiers` |
+| `tiers`    | `tiers`    |
+
+### SkyBlockCollectionTier
+
+```ts
+interface SkyBlockCollectionTier {
+  readonly tier: number;
+  readonly amountRequired: number;
+  readonly unlocks: string[];
+}
+```
+
+| Field            | Raw key          |
+| ---------------- | ---------------- |
+| `tier`           | `tier`           |
+| `amountRequired` | `amountRequired` |
+| `unlocks`        | `unlocks`        |
+
+### SkyBlockElectionResource
+
+The object returned by `parseSkyBlockElection`.
+
+```ts
+interface SkyBlockElectionResource {
   readonly lastUpdated: Date | null;
   readonly mayor: SkyBlockElectionMayor | null;
   readonly lastElection: SkyBlockElection;
   readonly currentElection: SkyBlockElection | null;
 }
+```
 
-export interface SkyBlockElectionMayor {
+| Field             | Notes                                                        |
+| ----------------- | ------------------------------------------------------------ |
+| `lastUpdated`     | Resource last-updated timestamp.                             |
+| `mayor`           | Current mayor, or `null` when the raw `mayor.name` is empty. |
+| `lastElection`    | Last election (raw `mayor.election`).                        |
+| `currentElection` | Ongoing election (raw `current`), or `null`.                 |
+
+### SkyBlockElectionMayor
+
+```ts
+interface SkyBlockElectionMayor {
   readonly name: string;
   readonly keyBenefit: string;
   readonly perks: SkyBlockElectionPerk[];
   readonly minister: SkyBlockElectionMinister | null;
 }
+```
 
-export interface SkyBlockElectionMinister {
+| Field        | Notes                            |
+| ------------ | -------------------------------- |
+| `name`       | Mayor name (raw `mayor.name`).   |
+| `keyBenefit` | Key benefit (raw `mayor.key`).   |
+| `perks`      | Mayor perks (raw `mayor.perks`). |
+| `minister`   | Active minister, or `null`.      |
+
+### SkyBlockElectionMinister
+
+```ts
+interface SkyBlockElectionMinister {
   readonly name: string;
   readonly keyBenefit: string;
   readonly perk: SkyBlockElectionPerk | null;
 }
+```
 
-export interface SkyBlockElection {
+| Field        | Notes                                           |
+| ------------ | ----------------------------------------------- |
+| `name`       | Minister name (raw `minister.name`).            |
+| `keyBenefit` | Key benefit (raw `minister.key`).               |
+| `perk`       | Minister perk (raw `minister.perk`), or `null`. |
+
+### SkyBlockElection
+
+Used for both `lastElection` and `currentElection`.
+
+```ts
+interface SkyBlockElection {
   readonly year: number;
   readonly candidates: SkyBlockElectionCandidate[];
 }
+```
 
-export interface SkyBlockElectionCandidate {
+| Field        | Raw key      |
+| ------------ | ------------ |
+| `year`       | `year`       |
+| `candidates` | `candidates` |
+
+### SkyBlockElectionCandidate
+
+```ts
+interface SkyBlockElectionCandidate {
   readonly name: string;
   readonly keyBenefit: string;
   readonly perks: SkyBlockElectionPerk[];
   readonly votesReceived: number;
 }
+```
 
-export interface SkyBlockElectionPerk {
+| Field           | Raw key |
+| --------------- | ------- |
+| `name`          | `name`  |
+| `keyBenefit`    | `key`   |
+| `perks`         | `perks` |
+| `votesReceived` | `votes` |
+
+### SkyBlockElectionPerk
+
+Used by mayors, candidates, and ministers.
+
+```ts
+interface SkyBlockElectionPerk {
   readonly name: string;
   readonly description: string;
   readonly minister: boolean;
 }
 ```
 
-### Fields
+| Field         | Raw key       |
+| ------------- | ------------- |
+| `name`        | `name`        |
+| `description` | `description` |
+| `minister`    | `minister`    |
 
-| Field                                     | Description                                                         |
-| ----------------------------------------- | ------------------------------------------------------------------- |
-| `lastUpdated`                             | Timestamp the resource was last updated, or `null` if absent.       |
-| `mayor`                                   | The current mayor, or `null` when no mayor name is present.         |
-| `lastElection`                            | The most recent completed election (sourced from `mayor.election`). |
-| `currentElection`                         | The election currently in progress, or `null` when absent.          |
-| `SkyBlockElectionMayor.name`              | Mayor name.                                                         |
-| `SkyBlockElectionMayor.keyBenefit`        | Mapped from the raw `key` field; the mayor's key benefit.           |
-| `SkyBlockElectionMayor.perks`             | List of the mayor's perks.                                          |
-| `SkyBlockElectionMayor.minister`          | The mayor's minister, or `null` when absent.                        |
-| `SkyBlockElectionMinister.name`           | Minister name.                                                      |
-| `SkyBlockElectionMinister.keyBenefit`     | Mapped from the raw `key` field; the minister's key benefit.        |
-| `SkyBlockElectionMinister.perk`           | The minister's single perk, or `null` when absent.                  |
-| `SkyBlockElection.year`                   | Election year.                                                      |
-| `SkyBlockElection.candidates`             | List of candidates.                                                 |
-| `SkyBlockElectionCandidate.name`          | Candidate name.                                                     |
-| `SkyBlockElectionCandidate.keyBenefit`    | Mapped from the raw `key` field; the candidate's key benefit.       |
-| `SkyBlockElectionCandidate.perks`         | List of the candidate's perks.                                      |
-| `SkyBlockElectionCandidate.votesReceived` | Mapped from the raw `votes` field; votes received.                  |
-| `SkyBlockElectionPerk.name`               | Perk name.                                                          |
-| `SkyBlockElectionPerk.description`        | Perk description text.                                              |
-| `SkyBlockElectionPerk.minister`           | Whether the perk is a minister perk.                                |
+### SkyBlockBingoResource
 
-### Null and empty behavior
-
-Returns `null` when `raw` is not an object. `mayor` is `null` when the mayor name resolves to an empty string. `mayor.minister` is `null` when the `minister` block is not an object, and `minister.perk` is `null` when its `perk` block is not an object. `currentElection` is `null` when the raw `current` field is not an object. `lastElection` is always present (parsed from `mayor.election`, defaulting to empty values when absent). All `perks`/`candidates` arrays are empty when their keys are absent.
-
-## parseSkyBlockBingo
-
-Parses the SkyBlock bingo event (`/resources/skyblock/bingo`) into a typed object.
+The object returned by `parseSkyBlockBingo`.
 
 ```ts
-export function parseSkyBlockBingo(
-  raw: Record<string, unknown>,
-): SkyBlockBingoResource | null;
-```
-
-### Returned types
-
-```ts
-export interface SkyBlockBingoResource {
+interface SkyBlockBingoResource {
   readonly lastUpdated: Date | null;
   readonly id: number;
   readonly name: string;
@@ -214,8 +313,21 @@ export interface SkyBlockBingoResource {
   readonly modifier: string;
   readonly goals: SkyBlockBingoGoal[];
 }
+```
 
-export interface SkyBlockBingoGoal {
+| Field           | Notes                            |
+| --------------- | -------------------------------- |
+| `lastUpdated`   | Resource last-updated timestamp. |
+| `id`            | Event id (raw `id`).             |
+| `name`          | Event name (raw `name`).         |
+| `start` / `end` | Event start / end timestamps.    |
+| `modifier`      | Event modifier (raw `modifier`). |
+| `goals`         | Goal definitions (raw `goals`).  |
+
+### SkyBlockBingoGoal
+
+```ts
+interface SkyBlockBingoGoal {
   readonly id: string;
   readonly name: string;
   readonly lore: string;
@@ -226,26 +338,13 @@ export interface SkyBlockBingoGoal {
 }
 ```
 
-### Fields
-
-| Field                              | Description                                                   |
-| ---------------------------------- | ------------------------------------------------------------- |
-| `lastUpdated`                      | Timestamp the resource was last updated, or `null` if absent. |
-| `id`                               | Bingo event id.                                               |
-| `name`                             | Bingo event name.                                             |
-| `start`                            | Event start timestamp, or `null` if absent.                   |
-| `end`                              | Event end timestamp, or `null` if absent.                     |
-| `modifier`                         | Event modifier string.                                        |
-| `goals`                            | List of bingo goals.                                          |
-| `SkyBlockBingoGoal.id`             | Goal identifier.                                              |
-| `SkyBlockBingoGoal.name`           | Goal display name.                                            |
-| `SkyBlockBingoGoal.lore`           | Single lore string.                                           |
-| `SkyBlockBingoGoal.fullLore`       | Full lore as a list of strings.                               |
-| `SkyBlockBingoGoal.progress`       | Goal progress value.                                          |
-| `SkyBlockBingoGoal.tiers`          | List of tier threshold numbers.                               |
-| `SkyBlockBingoGoal.requiredAmount` | Required amount when present as a number, otherwise `null`.   |
-
-### Null and empty behavior
-
-Returns `null` when `raw` is not an object. `lastUpdated`, `start`, and `end` are `null` when missing or unparseable. Each goal's `requiredAmount` is `null` unless the raw value is a number. `goals` and each goal's `fullLore`/`tiers` arrays are empty when their keys are absent.
+| Field            | Notes                                                |
+| ---------------- | ---------------------------------------------------- |
+| `id`             | Goal id (raw `id`).                                  |
+| `name`           | Goal name (raw `name`).                              |
+| `lore`           | Single-line lore (raw `lore`).                       |
+| `fullLore`       | Multi-line lore (raw `fullLore`).                    |
+| `progress`       | Raw `progress`.                                      |
+| `tiers`          | Tier thresholds (raw `tiers`).                       |
+| `requiredAmount` | Raw `requiredAmount` when numeric, otherwise `null`. |
 

@@ -345,6 +345,7 @@ export interface SkyWarsStats {
   readonly megaPerks: SkyWarsModePerks;
   readonly rankedPerks: SkyWarsModePerks;
   readonly universalPerks: SkyWarsUniversalPerks;
+  readonly universalPerkToggles: Readonly<Record<string, boolean>>;
   readonly perkSlots: SkyWarsPerkSlots;
   readonly disabledPerks: Readonly<Record<string, readonly string[]>>;
   readonly mythicKits: SkyWarsMythicKits;
@@ -506,6 +507,19 @@ function parseUniversalPerks(
   };
 }
 
+function parseUniversalPerkToggles(
+  skyWars: Record<string, unknown>,
+): Readonly<Record<string, boolean>> {
+  const result: Record<string, boolean> = {};
+  for (const rawKey of Object.keys(skyWars)) {
+    const match = /^toggle_(?!solo_|team_|mega_|ranked_)(.+)$/.exec(rawKey);
+    if (match) {
+      result[match[1]] = skyWars[rawKey] === true;
+    }
+  }
+  return result;
+}
+
 const SOLO_PERKS: ReadonlyArray<readonly [string, string]> = [
   ["enderMastery", "ender_mastery"],
   ["arrowRecovery", "arrow_recovery"],
@@ -531,6 +545,7 @@ const SOLO_PERKS: ReadonlyArray<readonly [string, string]> = [
   ["frost", "frost"],
   ["barbarian", "barbarian"],
   ["savior", "savior"],
+  ["telekinesis", "telekinesis"],
 ];
 
 const TEAMS_PERKS: ReadonlyArray<readonly [string, string]> = [
@@ -558,6 +573,7 @@ const TEAMS_PERKS: ReadonlyArray<readonly [string, string]> = [
   ["bulldozer", "bulldozer"],
   ["barbarian", "barbarian"],
   ["diamondpiercer", "diamondpiercer"],
+  ["telekinesis", "telekinesis"],
 ];
 
 const MEGA_PERKS: ReadonlyArray<readonly [string, string]> = [
@@ -577,6 +593,7 @@ const MEGA_PERKS: ReadonlyArray<readonly [string, string]> = [
   ["luckyCharm", "lucky_charm"],
   ["blackMagic", "black_magic"],
   ["necromancer", "necromancer"],
+  ["telekinesis", "telekinesis"],
 ];
 
 const RANKED_PERKS: ReadonlyArray<readonly [string, string]> = [
@@ -601,6 +618,8 @@ const RANKED_PERKS: ReadonlyArray<readonly [string, string]> = [
   ["rusher", "rusher"],
   ["bridger", "bridger"],
   ["environmentalExpert", "environmental_expert"],
+  ["bulldozer", "bulldozer"],
+  ["telekinesis", "telekinesis"],
 ];
 
 const MYTHIC_KIT_SUFFIX: Readonly<Record<keyof SkyWarsMythicKits, string>> = {
@@ -1051,6 +1070,7 @@ export function parseSkyWars(
     megaPerks: parsePerks(skyWars, "mega", MEGA_PERKS),
     rankedPerks: parsePerks(skyWars, "ranked", RANKED_PERKS),
     universalPerks: parseUniversalPerks(skyWars),
+    universalPerkToggles: parseUniversalPerkToggles(skyWars),
     perkSlots: parsePerkSlots(skyWars),
     disabledPerks: parseDisabledPerks(skyWars),
     mythicKits: parseMythicKits(skyWars),

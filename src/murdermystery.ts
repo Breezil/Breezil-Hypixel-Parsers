@@ -37,23 +37,6 @@ const MAP_SUFFIX = {
   widowsDen: "widow's_den",
 } as const;
 
-const EMBLEM_COLORS = {
-  aqua: "aqua",
-  black: "black",
-  blue: "blue",
-  darkAqua: "dark_aqua",
-  darkBlue: "dark_blue",
-  darkGray: "dark_gray",
-  darkGreen: "dark_green",
-  darkPurple: "dark_purple",
-  darkRed: "dark_red",
-  gray: "gray",
-  green: "green",
-  lightPurple: "light_purple",
-  red: "red",
-  yellow: "yellow",
-} as const;
-
 const HOTBAR_SLOT_KEYS = {
   slot0: "0",
   slot1: "1",
@@ -82,108 +65,6 @@ const FREE_EVENT_KEY_KEYS = {
   halloween2022: "free_event_key_mm_halloween_chests_2022",
   halloween2023: "free_event_key_mm_halloween_chests_2023",
   lunar2020: "free_event_key_mm_lunar_chests_2020",
-} as const;
-
-const KNIFE_SKIN_XP_KEYS = {
-  tenThousandSpoons: "10000_spoons",
-  apple: "apple",
-  bastedTurkey: "basted_turkey",
-  blazeStick: "blaze_stick",
-  bloodyBrick: "bloody_brick",
-  bone: "bone",
-  campfireLeftovers: "campfire_leftovers",
-  carrotOnStick: "carrot_on_stick",
-  cheapo: "cheapo",
-  cheese: "cheese",
-  chewedBush: "chewed_bush",
-  diamondShovel: "diamond_shovel",
-  doubleDeathScythe: "double_death_scythe",
-  dragonEgg: "dragon_egg",
-  earthenDagger: "earthen_dagger",
-  easterBasket: "easter_basket",
-  farmingImplement: "farming_implement",
-  feather: "feather",
-  fragilePlant: "fragile_plant",
-  frisbee: "frisbee",
-  glisteningMelon: "glistening_melon",
-  goldDigger: "gold_digger",
-  grilledSteak: "grilled_steak",
-  grimoire: "grimoire",
-  iceShard: "ice_shard",
-  mouseTrap: "mouse_trap",
-  mvp: "mvp",
-  prickly: "prickly",
-  pumpkinPie: "pumpkin_pie",
-  rudolphsNose: "rudolphs_nose",
-  rudolphsSnack: "rudolphs_snack",
-  salmon: "salmon",
-  scythe: "scythe",
-  shears: "shears",
-  shinySnack: "shiny_snack",
-  shovel: "shovel",
-  shred: "shred",
-  sprayPaintedShovel: "spray_painted_shovel",
-  stake: "stake",
-  stick: "stick",
-  stickWithHat: "stick_with_hat",
-  sweetTreat: "sweet_treat",
-  timber: "timber",
-  vip: "vip",
-  woodAxe: "wood_axe",
-} as const;
-
-const DESCENT_ITEMS = {
-  armed: "Armed",
-  bloodLust: "Bloodlust",
-  bountyHunter: "Bountyhunter",
-  cleanJob: "Cleanjob",
-  collateral: "Collateral",
-  contagionContained: "Contagioncontained",
-  cornucopia: "Cornucopia",
-  crimsonJoy: "Crimsonjoy",
-  crowdControl: "Crowdcontrol",
-  cuttingTheRoots: "Cuttingtheroots",
-  deadlyPrecision: "Deadlyprecision",
-  deadOrAlive: "Deadoralive",
-  deathDefy: "Deathdefy",
-  distantTransmission: "Distanttransmission",
-  doubleDosage: "Doubledosage",
-  dualProficiency: "Dualproficiency",
-  exponentiation: "Exponentiation",
-  eyeOnPrey: "Eyeonprey",
-  firstJob: "Firstjob",
-  firstOfMany: "Firstofmany",
-  firstSteps: "Firststeps",
-  grandSlam: "Grandslam",
-  hero: "Hero",
-  highRoller: "Highroller",
-  holdGround: "Holdground",
-  huntsman: "Huntsman",
-  jobSearch: "Jobsearch",
-  lawMaker: "Lawmaker",
-  legacy: "Legacy",
-  localSpecialty: "Localspecialty",
-  lurkingContagion: "Lurkingcontagion",
-  makeshiftShield: "Makeshiftshield",
-  mowingDown: "Mowingdown",
-  oneOfUs: "Oneofus",
-  paneKiller: "Panekiller",
-  patientZero: "Patientzero",
-  postPandemic: "Postpandemic",
-  pythagoreanDisposal: "Pythagoreandisposal",
-  quickDraw: "Quickdraw",
-  reloaded: "Reloaded",
-  seasonedHitman: "Seasonedhitman",
-  selfDefense: "Selfdefense",
-  serialTrapper: "Serialtrapper",
-  silverBullet: "Silverbullet",
-  slaughterHouse: "Slaughterhouse",
-  sneaky: "Sneaky",
-  survival: "Survival",
-  totalOutbreak: "Totaloutbreak",
-  trapping101: "Trapping101",
-  trulyMad: "Trulymad",
-  viralKnife: "Viralknife",
 } as const;
 
 export interface MurderMysteryModeStats {
@@ -227,9 +108,7 @@ export type MurderMysteryMaps = Readonly<
   Record<keyof typeof MAP_SUFFIX, MurderMysteryMapStats>
 >;
 
-export type MurderMysteryEmblemColors = Readonly<
-  Record<keyof typeof EMBLEM_COLORS, boolean>
->;
+export type MurderMysteryEmblemColors = Readonly<Record<string, boolean>>;
 
 export interface MurderMysteryEmblem {
   readonly colorUnlocked: MurderMysteryEmblemColors;
@@ -249,9 +128,7 @@ export interface MurderMysterySettings {
   readonly doPrefixesInGame: boolean;
 }
 
-export type MurderMysteryKnifeSkinExperience = Readonly<
-  Record<keyof typeof KNIFE_SKIN_XP_KEYS, number>
->;
+export type MurderMysteryKnifeSkinExperience = Readonly<Record<string, number>>;
 
 export interface MurderMysteryKnifeSkinPrestiges {
   readonly usePrestige: readonly string[];
@@ -264,7 +141,7 @@ export interface MurderMysteryDescentItem {
 }
 
 export type MurderMysteryDescent = Readonly<
-  Record<keyof typeof DESCENT_ITEMS, MurderMysteryDescentItem>
+  Record<string, MurderMysteryDescentItem>
 >;
 
 export interface MurderMysteryLeaderboardSettings {
@@ -335,13 +212,22 @@ function stringArray(
     : [];
 }
 
-function numberRecord<Key extends string>(
+function openNumberRecord(
   source: Record<string, unknown>,
-  keys: Record<Key, string>,
-): Readonly<Record<Key, number>> {
-  const result = {} as Record<Key, number>;
-  for (const [name, key] of Object.entries(keys) as Array<[Key, string]>) {
-    result[name] = num(source, key);
+): Readonly<Record<string, number>> {
+  const result: Record<string, number> = {};
+  for (const key of Object.keys(source)) {
+    result[key] = num(source, key);
+  }
+  return result;
+}
+
+function openBooleanRecord(
+  source: Record<string, unknown>,
+): Readonly<Record<string, boolean>> {
+  const result: Record<string, boolean> = {};
+  for (const key of Object.keys(source)) {
+    result[key] = bool(source, key);
   }
   return result;
 }
@@ -450,7 +336,7 @@ function parseMaps(mm: Record<string, unknown>): MurderMysteryMaps {
 
 function parseEmblem(emblem: Record<string, unknown>): MurderMysteryEmblem {
   return {
-    colorUnlocked: booleanRecord(obj(emblem, "color_unlocked"), EMBLEM_COLORS),
+    colorUnlocked: openBooleanRecord(obj(emblem, "color_unlocked")),
     selectedColor: str(emblem, "selected_color"),
     selectedIcon: str(emblem, "selected_icon"),
   };
@@ -461,20 +347,15 @@ function parseKnifeSkinPrestiges(
 ): MurderMysteryKnifeSkinPrestiges {
   return {
     usePrestige: stringArray(prestiges, "usePrestige"),
-    experience: numberRecord(obj(prestiges, "xp"), KNIFE_SKIN_XP_KEYS),
+    experience: openNumberRecord(obj(prestiges, "xp")),
   };
 }
 
 function parseDescent(descent: Record<string, unknown>): MurderMysteryDescent {
-  const result = {} as Record<
-    keyof typeof DESCENT_ITEMS,
-    MurderMysteryDescentItem
-  >;
-  for (const [name, key] of Object.entries(DESCENT_ITEMS) as Array<
-    [keyof typeof DESCENT_ITEMS, string]
-  >) {
+  const result: Record<string, MurderMysteryDescentItem> = {};
+  for (const key of Object.keys(descent)) {
     const item = obj(descent, key);
-    result[name] = {
+    result[key] = {
       claimed: bool(item, "claimed"),
       progress: num(item, "progress"),
     };

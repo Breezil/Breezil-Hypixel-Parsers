@@ -1,19 +1,91 @@
 # Static & Housing
 
-Parsers for Hypixel's network-wide static endpoints (boosters, leaderboards, counts, punishment stats) and the Housing endpoints. Every parser is strict-raw: it mirrors the raw API JSON field-for-field with no computed, derived, or aggregated values.
+The static module exposes parsers for Hypixel's network-wide endpoints (`/boosters`, `/leaderboards`, `/counts`, `/punishmentstats`), and the housing module parses the `/housing/*` endpoints. Each parser mirrors the raw JSON field-for-field into readonly, fully-typed objects with no computation and no derived totals. Across all parsers the safe readers apply: missing or non-number values become `0`, missing or non-string values become `""`, boolean fields are `true` only when the raw value is exactly `true`, missing nested objects are treated as empty objects, and `Date | null` fields are `null` unless the raw value is a positive epoch-ms number.
 
 ## parseBoosters
 
-Parses the network boosters (`/boosters`) into a typed object.
+Parses the network boosters (`/boosters`) into an array of typed objects.
 
 ```ts
-export function parseBoosters(boosters: unknown[]): StaticBooster[];
+function parseBoosters(boosters: unknown[]): StaticBooster[];
 ```
 
-Iterates the input array and skips any entry that is not a plain object (non-objects, `null`, and arrays are ignored), so the returned array may be shorter than the input.
+### Null / empty behavior
+
+Never returns `null`. Iterates the input array, skipping any entry that is not a plain object (`null`, arrays, and non-objects are dropped), so the result may be shorter than the input. Returns `[]` when no valid entries exist.
+
+## parseLeaderboards
+
+Parses the leaderboards (`/leaderboards`) into a typed object keyed by game name.
 
 ```ts
-export interface StaticBooster {
+function parseLeaderboards(
+  raw: Record<string, unknown>,
+): Record<string, StaticLeaderboard[]>;
+```
+
+### Null / empty behavior
+
+Never returns `null`. Reads the raw `leaderboards` object (empty when absent). Each game whose value is not an array is skipped; within a game, non-object entries are skipped. Returns an empty record when no games qualify.
+
+## parseGameCounts
+
+Parses the player counts (`/counts`) into a typed object.
+
+```ts
+function parseGameCounts(raw: Record<string, unknown>): StaticGameCounts;
+```
+
+### Null / empty behavior
+
+Never returns `null`. Reads the raw `games` object (empty when absent); each game value that is not a plain object is skipped. Per-game `modes` includes only entries whose count is a number.
+
+## parseWatchdogStats
+
+Parses the punishment stats (`/punishmentstats`) into a typed object.
+
+```ts
+function parseWatchdogStats(raw: Record<string, unknown>): StaticWatchdogStats;
+```
+
+### Null / empty behavior
+
+Never returns `null`. Always returns a fully-populated `StaticWatchdogStats`; missing numeric fields become `0`.
+
+## parseHouse
+
+Parses a single house (`/housing/house`) into a typed object.
+
+```ts
+function parseHouse(raw: Record<string, unknown>): HousingHouse;
+```
+
+### Null / empty behavior
+
+Never returns `null`. Always returns a fully-populated `HousingHouse`; `createdAt` is a `Date` or `null`, and the nested `cookies` object is always present.
+
+## parseHouses
+
+Parses a list of houses (`/housing/houses`) into an array of typed objects.
+
+```ts
+function parseHouses(houses: unknown[]): HousingHouse[];
+```
+
+### Null / empty behavior
+
+Never returns `null`. Iterates the input array, skipping any entry that is not a plain object; each remaining entry is parsed via `parseHouse`. Returns `[]` when no valid entries exist.
+
+---
+
+## Returned type tree
+
+### StaticBooster
+
+The per-entry value returned by `parseBoosters`.
+
+```ts
+interface StaticBooster {
   readonly id: string;
   readonly purchaserUuid: string;
   readonly amount: number;
@@ -25,31 +97,25 @@ export interface StaticBooster {
 }
 ```
 
-| Field            | Type                           | Notes                                                                                                                      |
-| ---------------- | ------------------------------ | -------------------------------------------------------------------------------------------------------------------------- |
-| `id`             | `string`                       | Mapped from the raw `_id` field.                                                                                           |
-| `purchaserUuid`  | `string`                       | UUID of the booster purchaser.                                                                                             |
-| `amount`         | `number`                       | Booster multiplier amount.                                                                                                 |
-| `originalLength` | `number`                       | Original duration.                                                                                                         |
-| `length`         | `number`                       | Remaining duration.                                                                                                        |
-| `gameType`       | `number`                       | Numeric game type id.                                                                                                      |
-| `dateActivated`  | `Date \| null`                 | `null` when the raw value is absent or not a valid date.                                                                   |
-| `stacked`        | `boolean \| readonly string[]` | An array of UUID strings when stacked is a list, otherwise `true` only when the raw value is exactly `true`, else `false`. |
+| Field            | Notes                                                                                                           |
+| ---------------- | --------------------------------------------------------------------------------------------------------------- |
+| `id`             | Raw `_id`.                                                                                                      |
+| `purchaserUuid`  | UUID of the booster purchaser.                                                                                  |
+| `amount`         | Booster multiplier amount.                                                                                      |
+| `originalLength` | Original duration.                                                                                              |
+| `length`         | Remaining duration.                                                                                             |
+| `gameType`       | Numeric game type id.                                                                                           |
+| `dateActivated`  | Epoch-ms timestamp as `Date`, or `null`.                                                                        |
+| `stacked`        | The raw `stacked` array filtered to strings, or `true` when the raw value is exactly `true`; otherwise `false`. |
 
-## parseLeaderboards
+---
 
-Parses the leaderboards (`/leaderboards`) into a typed object.
+### StaticLeaderboard
 
-```ts
-export function parseLeaderboards(
-  raw: Record<string, unknown>,
-): Record<string, StaticLeaderboard[]>;
-```
-
-Reads the `leaderboards` object and returns a map keyed by game name to an array of leaderboards. List values that are not arrays are skipped, and individual entries that are not plain objects are skipped. Returns an empty object when no `leaderboards` object is present.
+The per-entry value in each game's leaderboard list returned by `parseLeaderboards`.
 
 ```ts
-export interface StaticLeaderboard {
+interface StaticLeaderboard {
   readonly path: string;
   readonly prefix: string;
   readonly title: string;
@@ -59,58 +125,51 @@ export interface StaticLeaderboard {
 }
 ```
 
-| Field      | Type                | Notes                                                                                       |
-| ---------- | ------------------- | ------------------------------------------------------------------------------------------- |
-| `path`     | `string`            | Leaderboard path identifier.                                                                |
-| `prefix`   | `string`            | Display prefix.                                                                             |
-| `title`    | `string`            | Display title.                                                                              |
-| `location` | `string`            | In-world location string.                                                                   |
-| `count`    | `number`            | Number of leaders.                                                                          |
-| `leaders`  | `readonly string[]` | Filtered to string entries only; empty array when the raw value is missing or not an array. |
+| Field     | Notes                                                           |
+| --------- | --------------------------------------------------------------- |
+| `leaders` | The raw `leaders` array filtered to strings (`[]` when absent). |
 
-## parseGameCounts
+---
 
-Parses the player counts (`/counts`) into a typed object.
+### StaticGameCounts
+
+The root object returned by `parseGameCounts`.
 
 ```ts
-export function parseGameCounts(raw: Record<string, unknown>): StaticGameCounts;
-```
-
-Reads the `games` object and builds a per-game map. Game values that are not plain objects are skipped. Always returns an object; `games` is empty when no game entries are present.
-
-```ts
-export interface StaticGameCounts {
+interface StaticGameCounts {
   readonly playerCount: number;
   readonly games: Record<string, StaticGameCount>;
 }
+```
 
-export interface StaticGameCount {
+| Field         | Notes                               |
+| ------------- | ----------------------------------- |
+| `playerCount` | Total network player count.         |
+| `games`       | Per-game counts keyed by game name. |
+
+### StaticGameCount
+
+The per-game value within `StaticGameCounts.games`.
+
+```ts
+interface StaticGameCount {
   readonly players: number;
   readonly modes: Record<string, number>;
 }
 ```
 
-| Field                     | Type                              | Notes                                                     |
-| ------------------------- | --------------------------------- | --------------------------------------------------------- |
-| `playerCount`             | `number`                          | Total network player count.                               |
-| `games`                   | `Record<string, StaticGameCount>` | Per-game counts keyed by game name.                       |
-| `StaticGameCount.players` | `number`                          | Players in that game.                                     |
-| `StaticGameCount.modes`   | `Record<string, number>`          | Per-mode player counts; only numeric values are included. |
+| Field   | Notes                                                            |
+| ------- | ---------------------------------------------------------------- |
+| `modes` | Raw `modes` map, including only entries whose count is a number. |
 
-## parseWatchdogStats
+---
 
-Parses the punishment stats (`/punishmentstats`) into a typed object.
+### StaticWatchdogStats
 
-```ts
-export function parseWatchdogStats(
-  raw: Record<string, unknown>,
-): StaticWatchdogStats;
-```
-
-Always returns an object with all five fields mapped from their raw snake_case keys.
+The object returned by `parseWatchdogStats`.
 
 ```ts
-export interface StaticWatchdogStats {
+interface StaticWatchdogStats {
   readonly watchdogLastMinute: number;
   readonly watchdogDaily: number;
   readonly watchdogTotal: number;
@@ -119,26 +178,22 @@ export interface StaticWatchdogStats {
 }
 ```
 
-| Field                | Type     | Raw source              |
-| -------------------- | -------- | ----------------------- |
-| `watchdogLastMinute` | `number` | `watchdog_lastMinute`   |
-| `watchdogDaily`      | `number` | `watchdog_rollingDaily` |
-| `watchdogTotal`      | `number` | `watchdog_total`        |
-| `staffDaily`         | `number` | `staff_rollingDaily`    |
-| `staffTotal`         | `number` | `staff_total`           |
+| Field                | Notes                        |
+| -------------------- | ---------------------------- |
+| `watchdogLastMinute` | Raw `watchdog_lastMinute`.   |
+| `watchdogDaily`      | Raw `watchdog_rollingDaily`. |
+| `watchdogTotal`      | Raw `watchdog_total`.        |
+| `staffDaily`         | Raw `staff_rollingDaily`.    |
+| `staffTotal`         | Raw `staff_total`.           |
 
-## parseHouse
+---
 
-Parses a house (`/housing/house`) into a typed object.
+### HousingHouse
 
-```ts
-export function parseHouse(raw: Record<string, unknown>): HousingHouse;
-```
-
-Always returns an object. The nested `cookies` object is read from the raw `cookies` field via an internal helper.
+The object returned by `parseHouse` and the per-entry value returned by `parseHouses`.
 
 ```ts
-export interface HousingHouse {
+interface HousingHouse {
   readonly uuid: string;
   readonly owner: string;
   readonly name: string;
@@ -146,29 +201,23 @@ export interface HousingHouse {
   readonly players: number;
   readonly cookies: HousingCookies;
 }
+```
 
-export interface HousingCookies {
+| Field       | Notes                                    |
+| ----------- | ---------------------------------------- |
+| `uuid`      | House UUID.                              |
+| `owner`     | Owner UUID.                              |
+| `name`      | House name.                              |
+| `createdAt` | Epoch-ms timestamp as `Date`, or `null`. |
+| `players`   | Current player count.                    |
+
+### HousingCookies
+
+Read from the raw `cookies` object.
+
+```ts
+interface HousingCookies {
   readonly current: number;
 }
 ```
-
-| Field                    | Type             | Notes                                                    |
-| ------------------------ | ---------------- | -------------------------------------------------------- |
-| `uuid`                   | `string`         | House UUID.                                              |
-| `owner`                  | `string`         | Owner UUID.                                              |
-| `name`                   | `string`         | House name.                                              |
-| `createdAt`              | `Date \| null`   | `null` when the raw value is absent or not a valid date. |
-| `players`                | `number`         | Current player count.                                    |
-| `cookies`                | `HousingCookies` | Nested cookie totals.                                    |
-| `HousingCookies.current` | `number`         | Current cookie count, read from `cookies.current`.       |
-
-## parseHouses
-
-Parses a list of houses (`/housing/houses`) into a typed object.
-
-```ts
-export function parseHouses(houses: unknown[]): HousingHouse[];
-```
-
-Iterates the input array and skips any entry that is not a plain object (non-objects, `null`, and arrays are ignored), delegating each valid entry to [`parseHouse`](#parsehouse). Returns an empty array when no valid entries are present. Each element is a `HousingHouse` (see above).
 

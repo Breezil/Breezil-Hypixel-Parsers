@@ -13,16 +13,7 @@ export interface SkyBlockItemBytes {
   readonly data: string;
 }
 
-export interface SkyBlockEssences {
-  readonly wither: number;
-  readonly dragon: number;
-  readonly spider: number;
-  readonly undead: number;
-  readonly diamond: number;
-  readonly gold: number;
-  readonly ice: number;
-  readonly crimson: number;
-}
+export type SkyBlockEssences = Record<string, number>;
 
 export interface SkyBlockCurrencies {
   readonly coinPurse: number;
@@ -46,11 +37,14 @@ export interface SkyBlockLeveling {
   readonly bopBonus: string;
   readonly claimedTalisman: boolean;
   readonly migrated: boolean;
+  readonly migratedCompletions: boolean;
   readonly migratedCompletions2: boolean;
   readonly completedTasks: readonly string[];
   readonly lastViewedTasks: readonly string[];
   readonly emblemUnlocks: readonly string[];
   readonly categoryExpanded: boolean;
+  readonly guideSort: string;
+  readonly completed: readonly string[];
   readonly completions: Record<string, number>;
 }
 
@@ -82,6 +76,7 @@ export interface SkyBlockSlayerBoss {
   readonly bossKillsTier2: number;
   readonly bossKillsTier3: number;
   readonly bossKillsTier4: number;
+  readonly bossAttemptsTier0: number;
   readonly bossAttemptsTier1: number;
   readonly bossAttemptsTier2: number;
   readonly bossAttemptsTier3: number;
@@ -106,6 +101,7 @@ export interface SkyBlockSlayerQuest {
   readonly lastKilledMobIsland: string;
   readonly xpOnLastFollowerSpawn: number;
   readonly spawnTimestamp: number;
+  readonly killTimestamp: number;
 }
 
 export interface SkyBlockSlayers {
@@ -201,6 +197,7 @@ export interface SkyBlockDungeonHubRaceSettings {
 export interface SkyBlockDungeons {
   readonly catacombs: SkyBlockDungeonMode;
   readonly masterCatacombs: SkyBlockDungeonMode;
+  readonly dungeonTypes: Record<string, SkyBlockDungeonMode>;
   readonly selectedClass: string;
   readonly classExperience: Record<string, SkyBlockDungeonClass>;
   readonly secrets: number;
@@ -209,6 +206,8 @@ export interface SkyBlockDungeons {
   readonly hubRaceSettings: SkyBlockDungeonHubRaceSettings;
   readonly dailyRuns: SkyBlockDungeonDailyRuns;
   readonly unlockedJournals: readonly string[];
+  readonly journalEntries: Record<string, readonly number[]>;
+  readonly hasReadTheEye: boolean;
   readonly treasures: SkyBlockDungeonTreasures;
 }
 
@@ -241,7 +240,7 @@ export interface SkyBlockActiveEffect {
 }
 
 export interface SkyBlockTemporaryStatBuff {
-  readonly stat: number;
+  readonly statId: string;
   readonly key: string;
   readonly amount: number;
   readonly expireAt: number;
@@ -289,6 +288,7 @@ export interface SkyBlockJacobContests {
   readonly personalBests: Record<string, number>;
   readonly talkedToJacob: boolean;
   readonly migration: boolean;
+  readonly uniqueGolds2: readonly string[];
   readonly contests: Record<string, SkyBlockJacobContestEntry>;
 }
 
@@ -299,6 +299,7 @@ export interface SkyBlockAccessoryBag {
   readonly highestMagicalPower: number;
   readonly highestUnlockedTuningSlot: number;
   readonly tuningSlots: Record<string, Record<string, number>>;
+  readonly tuningRefunds: Record<string, boolean>;
 }
 
 export interface SkyBlockBestiary {
@@ -306,8 +307,11 @@ export interface SkyBlockBestiary {
   readonly migratedStats: boolean;
   readonly lastClaimedMilestone: number;
   readonly maxKillsVisible: boolean;
+  readonly milestonesNotifications: boolean;
   readonly kills: Record<string, number>;
   readonly deaths: Record<string, number>;
+  readonly unmigratedKills: Record<string, number>;
+  readonly unmigratedDeaths: Record<string, number>;
 }
 
 export interface SkyBlockToolkit {
@@ -367,6 +371,9 @@ export interface SkyBlockMiningCore {
   readonly dailyEffect: string;
   readonly dailyEffectLastChanged: number;
   readonly retroactiveTier2Token: boolean;
+  readonly hotmMigratorTreeResetSendMessage: boolean;
+  readonly stashIfFullNotification: boolean;
+  readonly lastReset: number;
   readonly dailyOresMined: number;
   readonly dailyOresMinedDay: number;
   readonly dailyOresMinedMithrilOre: number;
@@ -461,14 +468,7 @@ export interface SkyBlockChocolateHitmen {
   readonly eggSlotCooldownSum: number;
 }
 
-export interface SkyBlockChocolateCollectedEggs {
-  readonly breakfast: number;
-  readonly lunch: number;
-  readonly dinner: number;
-  readonly brunch: number;
-  readonly dejeuner: number;
-  readonly supper: number;
-}
+export type SkyBlockChocolateCollectedEggs = Record<string, number>;
 
 export interface SkyBlockChocolateRabbits {
   readonly collectedEggs: SkyBlockChocolateCollectedEggs;
@@ -492,8 +492,12 @@ export interface SkyBlockChocolateFactory {
   readonly barnCapacityLevel: number;
   readonly supremeChocolateBars: number;
   readonly refinedDarkCacaoTruffles: number;
+  readonly elDoradoProgress: number;
+  readonly goldenClickAmount: number;
+  readonly goldenClickYear: number;
   readonly rabbitSort: string;
   readonly rabbitFilter: string;
+  readonly rabbitHotspotFiler: string;
   readonly lastViewed: number;
   readonly employees: Record<string, number>;
   readonly upgrades: SkyBlockChocolateUpgrades;
@@ -541,8 +545,12 @@ export interface SkyBlockCrimsonIsleChickenQuest {
   readonly collected: readonly string[];
 }
 
+export type SkyBlockCrimsonIsleQuestEntry =
+  | SkyBlockScalarMap
+  | readonly string[];
+
 export interface SkyBlockCrimsonIsleQuests {
-  readonly questData: Record<string, SkyBlockObjective>;
+  readonly questData: Record<string, SkyBlockCrimsonIsleQuestEntry>;
   readonly minibossKills: Record<string, boolean>;
   readonly minibossDaily: SkyBlockScalarMap;
   readonly kuudraBossDaily: SkyBlockScalarMap;
@@ -569,6 +577,13 @@ export interface SkyBlockCrimsonIsleQuests {
   readonly kuudraLoremaster: boolean;
 }
 
+export interface SkyBlockCrimsonIsleNpcPath {
+  readonly npcId: string;
+  readonly pathId: string;
+  readonly skin: string;
+  readonly pathIndex: number;
+}
+
 export interface SkyBlockCrimsonIsle {
   readonly selectedFaction: string;
   readonly magesReputation: number;
@@ -581,6 +596,7 @@ export interface SkyBlockCrimsonIsle {
   readonly dojo: Record<string, number>;
   readonly abiphone: SkyBlockAbiphone;
   readonly matriarch: SkyBlockMatriarch;
+  readonly npcPath: SkyBlockCrimsonIsleNpcPath;
   readonly quests: SkyBlockCrimsonIsleQuests;
 }
 
@@ -591,11 +607,7 @@ export interface SkyBlockTrophyFish {
   readonly catches: Record<string, number>;
 }
 
-export interface SkyBlockObjective {
-  readonly status: string;
-  readonly progress: number;
-  readonly completedAt: number;
-}
+export type SkyBlockObjective = SkyBlockScalarMap;
 
 export interface SkyBlockObjectives {
   readonly tutorial: readonly string[];
@@ -616,6 +628,7 @@ export interface SkyBlockTrapperQuest {
 
 export interface SkyBlockQuests {
   readonly trapper: SkyBlockTrapperQuest;
+  readonly quests: Record<string, SkyBlockScalarMap>;
 }
 
 export interface SkyBlockPlayerStatsAuctions {
@@ -683,11 +696,23 @@ export interface SkyBlockPlayerStatsSpooky {
   readonly batsSpawned: Record<string, number>;
 }
 
+export interface SkyBlockPlayerStatsPets {
+  readonly totalExpGained: number;
+  readonly milestone: Record<string, number>;
+}
+
+export interface SkyBlockPlayerStatsShredderRod {
+  readonly bait: number;
+  readonly fished: number;
+}
+
 export interface SkyBlockPlayerStats {
   readonly highestDamage: number;
   readonly highestCriticalDamage: number;
   readonly glowingMushroomsBroken: number;
   readonly seaCreatureKills: number;
+  readonly cropsMined: number;
+  readonly shredderRod: SkyBlockPlayerStatsShredderRod;
   readonly kills: Record<string, number>;
   readonly deaths: Record<string, number>;
   readonly itemsFished: Record<string, number>;
@@ -706,7 +731,7 @@ export interface SkyBlockPlayerStats {
   readonly shardSaltHunts: number;
   readonly uniqueShards: number;
   readonly races: Record<string, number | Record<string, number>>;
-  readonly pets: Record<string, number>;
+  readonly pets: SkyBlockPlayerStatsPets;
 }
 
 export interface SkyBlockExperimentation {
@@ -715,9 +740,9 @@ export interface SkyBlockExperimentation {
   readonly serumsDrank: number;
   readonly claimedRetroactiveRng: boolean;
   readonly chargeTrackTimestamp: number;
-  readonly pairings: Record<string, number>;
-  readonly simon: Record<string, number>;
-  readonly numbers: Record<string, number>;
+  readonly pairings: SkyBlockScalarMap;
+  readonly simon: SkyBlockScalarMap;
+  readonly numbers: SkyBlockScalarMap;
 }
 
 export interface SkyBlockRiftAccess {
@@ -864,6 +889,7 @@ export interface SkyBlockRift {
   readonly westVillage: SkyBlockRiftWestVillage;
   readonly wyldWoods: SkyBlockRiftWyldWoods;
   readonly dreadFarm: SkyBlockRiftDreadFarm;
+  readonly slayerQuest: SkyBlockSlayerQuest | null;
   readonly lifetimePurchasedBoundaries: readonly string[];
   readonly inventory: SkyBlockInventory | null;
   readonly enderChest: SkyBlockInventory | null;
@@ -986,6 +1012,8 @@ export interface SkyBlockShardTrap {
 export interface SkyBlockShards {
   readonly shardSort: string;
   readonly fusionResultSort: string;
+  readonly fusionSort: string;
+  readonly fused: number;
   readonly owned: readonly SkyBlockShardOwned[];
   readonly activeTraps: readonly SkyBlockShardTrap[];
 }
@@ -1013,6 +1041,8 @@ export interface SkyBlockLoadout {
 
 export interface SkyBlockMember {
   readonly playerId: string;
+  readonly firstJoinHub: number;
+  readonly stats: Record<string, number>;
   readonly currencies: SkyBlockCurrencies;
   readonly fairySouls: SkyBlockFairySouls;
   readonly leveling: SkyBlockLeveling;
@@ -1110,23 +1140,6 @@ const SKILL_KEYS: Record<keyof SkyBlockSkillExperience, string> = {
   taming: "SKILL_TAMING",
   hunting: "SKILL_HUNTING",
 };
-
-const SLAYER_NAMES: readonly string[] = [
-  "zombie",
-  "spider",
-  "wolf",
-  "enderman",
-  "blaze",
-  "vampire",
-];
-
-const DUNGEON_CLASS_NAMES: readonly string[] = [
-  "healer",
-  "berserk",
-  "mage",
-  "archer",
-  "tank",
-];
 
 function stringArray(
   source: Record<string, unknown>,
@@ -1327,19 +1340,14 @@ function parseToolkit(toolkit: Record<string, unknown>): SkyBlockToolkit {
 function parseCurrencies(member: Record<string, unknown>): SkyBlockCurrencies {
   const currencies = obj(member, "currencies");
   const essence = obj(currencies, "essence");
+  const essences: Record<string, number> = {};
+  for (const key of Object.keys(essence)) {
+    essences[key] = num(obj(essence, key), "current");
+  }
   return {
     coinPurse: num(currencies, "coin_purse"),
     motesPurse: num(currencies, "motes_purse"),
-    essences: {
-      wither: num(obj(essence, "WITHER"), "current"),
-      dragon: num(obj(essence, "DRAGON"), "current"),
-      spider: num(obj(essence, "SPIDER"), "current"),
-      undead: num(obj(essence, "UNDEAD"), "current"),
-      diamond: num(obj(essence, "DIAMOND"), "current"),
-      gold: num(obj(essence, "GOLD"), "current"),
-      ice: num(obj(essence, "ICE"), "current"),
-      crimson: num(obj(essence, "CRIMSON"), "current"),
-    },
+    essences,
   };
 }
 
@@ -1367,11 +1375,14 @@ function parseLeveling(member: Record<string, unknown>): SkyBlockLeveling {
     bopBonus: str(leveling, "bop_bonus"),
     claimedTalisman: bool(leveling, "claimed_talisman"),
     migrated: bool(leveling, "migrated"),
+    migratedCompletions: bool(leveling, "migrated_completions"),
     migratedCompletions2: bool(leveling, "migrated_completions_2"),
     completedTasks: stringArray(leveling, "completed_tasks"),
     lastViewedTasks: stringArray(leveling, "last_viewed_tasks"),
     emblemUnlocks: stringArray(leveling, "emblem_unlocks"),
     categoryExpanded: bool(leveling, "category_expanded"),
+    guideSort: str(leveling, "guide_sort"),
+    completed: stringArray(leveling, "completed"),
     completions: numberRecord(obj(leveling, "completions")),
   };
 }
@@ -1448,6 +1459,7 @@ function parseSlayerBoss(boss: Record<string, unknown>): SkyBlockSlayerBoss {
     bossKillsTier2: num(boss, "boss_kills_tier_2"),
     bossKillsTier3: num(boss, "boss_kills_tier_3"),
     bossKillsTier4: num(boss, "boss_kills_tier_4"),
+    bossAttemptsTier0: num(boss, "boss_attempts_tier_0"),
     bossAttemptsTier1: num(boss, "boss_attempts_tier_1"),
     bossAttemptsTier2: num(boss, "boss_attempts_tier_2"),
     bossAttemptsTier3: num(boss, "boss_attempts_tier_3"),
@@ -1472,6 +1484,7 @@ function parseSlayerQuest(quest: Record<string, unknown>): SkyBlockSlayerQuest {
     lastKilledMobIsland: str(quest, "last_killed_mob_island"),
     xpOnLastFollowerSpawn: num(quest, "xp_on_last_follower_spawn"),
     spawnTimestamp: num(quest, "spawn_timestamp"),
+    killTimestamp: num(quest, "kill_timestamp"),
   };
 }
 
@@ -1479,7 +1492,7 @@ function parseSlayers(member: Record<string, unknown>): SkyBlockSlayers {
   const slayer = obj(member, "slayer");
   const bosses = obj(slayer, "slayer_bosses");
   const parsed: Record<string, SkyBlockSlayerBoss> = {};
-  for (const name of SLAYER_NAMES) {
+  for (const name of Object.keys(bosses)) {
     parsed[name] = parseSlayerBoss(obj(bosses, name));
   }
   const quest = slayer.slayer_quest;
@@ -1578,17 +1591,28 @@ function parseDungeons(member: Record<string, unknown>): SkyBlockDungeons {
   const dungeonTypes = obj(dungeons, "dungeon_types");
   const playerClasses = obj(dungeons, "player_classes");
   const dailyRuns = obj(dungeons, "daily_runs");
+  const dungeonJournal = obj(dungeons, "dungeon_journal");
+  const rawJournalEntries = obj(dungeonJournal, "journal_entries");
+  const journalEntries: Record<string, readonly number[]> = {};
+  for (const key of Object.keys(rawJournalEntries)) {
+    journalEntries[key] = numberArray(rawJournalEntries, key);
+  }
   const raceSettings = obj(dungeons, "dungeon_hub_race_settings");
   const treasures = obj(dungeons, "treasures");
   const classExperience: Record<string, SkyBlockDungeonClass> = {};
-  for (const name of DUNGEON_CLASS_NAMES) {
+  for (const name of Object.keys(playerClasses)) {
     classExperience[name] = {
       experience: num(obj(playerClasses, name), "experience"),
     };
   }
+  const allDungeonTypes: Record<string, SkyBlockDungeonMode> = {};
+  for (const name of Object.keys(dungeonTypes)) {
+    allDungeonTypes[name] = parseDungeonMode(obj(dungeonTypes, name));
+  }
   return {
     catacombs: parseDungeonMode(obj(dungeonTypes, "catacombs")),
     masterCatacombs: parseDungeonMode(obj(dungeonTypes, "master_catacombs")),
+    dungeonTypes: allDungeonTypes,
     selectedClass: str(dungeons, "selected_dungeon_class"),
     classExperience,
     secrets: num(dungeons, "secrets"),
@@ -1603,10 +1627,9 @@ function parseDungeons(member: Record<string, unknown>): SkyBlockDungeons {
       currentDayStamp: num(dailyRuns, "current_day_stamp"),
       completedRunsCount: num(dailyRuns, "completed_runs_count"),
     },
-    unlockedJournals: stringArray(
-      obj(dungeons, "dungeon_journal"),
-      "unlocked_journals",
-    ),
+    unlockedJournals: stringArray(dungeonJournal, "unlocked_journals"),
+    journalEntries,
+    hasReadTheEye: bool(dungeonJournal, "has_read_the_eye"),
     treasures: {
       runs: objectArray(treasures, "runs").map(parseTreasureRun),
       chests: objectArray(treasures, "chests").map(parseTreasureChest),
@@ -1645,7 +1668,7 @@ function parsePlayerData(member: Record<string, unknown>): SkyBlockPlayerData {
     })),
     temporaryStatBuffs: objectArray(playerData, "temp_stat_buffs").map(
       (buff) => ({
-        stat: num(buff, "stat"),
+        statId: str(buff, "stat_id"),
         key: str(buff, "key"),
         amount: num(buff, "amount"),
         expireAt: num(buff, "expire_at"),
@@ -1670,6 +1693,7 @@ function parsePlayerStats(
   const endIsland = obj(playerStats, "end_island");
   const dragonFight = obj(endIsland, "dragon_fight");
   const spooky = obj(playerStats, "spooky");
+  const shredderRod = obj(playerStats, "shredder_rod");
   const festivals: Record<string, SkyBlockSpookyFestivalCandy> = {};
   for (const key of Object.keys(candy)) {
     if (key.startsWith("spooky_festival_")) {
@@ -1685,6 +1709,11 @@ function parsePlayerStats(
     highestCriticalDamage: num(playerStats, "highest_critical_damage"),
     glowingMushroomsBroken: num(playerStats, "glowing_mushrooms_broken"),
     seaCreatureKills: num(playerStats, "sea_creature_kills"),
+    cropsMined: num(playerStats, "crops_mined"),
+    shredderRod: {
+      bait: num(shredderRod, "bait"),
+      fished: num(shredderRod, "fished"),
+    },
     kills: numberRecord(obj(playerStats, "kills")),
     deaths: numberRecord(obj(playerStats, "deaths")),
     itemsFished: numberRecord(obj(playerStats, "items_fished")),
@@ -1754,7 +1783,10 @@ function parsePlayerStats(
     shardSaltHunts: num(playerStats, "shard_salt_hunts"),
     uniqueShards: num(playerStats, "unique_shards"),
     races: raceRecord(obj(playerStats, "races")),
-    pets: numberRecord(obj(playerStats, "pets")),
+    pets: {
+      totalExpGained: num(obj(playerStats, "pets"), "total_exp_gained"),
+      milestone: numberRecord(obj(obj(playerStats, "pets"), "milestone")),
+    },
   };
 }
 
@@ -1774,6 +1806,7 @@ function parseJacobContests(
     personalBests: numberRecord(obj(jacob, "personal_bests")),
     talkedToJacob: bool(jacob, "talked"),
     migration: bool(jacob, "migration"),
+    uniqueGolds2: stringArray(jacob, "unique_golds2"),
     contests: recordOf(obj(jacob, "contests"), (contest) => ({
       collected: num(contest, "collected"),
       claimedRewards: bool(contest, "claimed_rewards"),
@@ -1796,6 +1829,18 @@ function parseTuningSlots(
   return result;
 }
 
+function parseTuningRefunds(
+  tuning: Record<string, unknown>,
+): Record<string, boolean> {
+  const result: Record<string, boolean> = {};
+  for (const key of Object.keys(tuning)) {
+    if (key.startsWith("refund")) {
+      result[key] = tuning[key] === true;
+    }
+  }
+  return result;
+}
+
 function parseAccessoryBag(
   member: Record<string, unknown>,
 ): SkyBlockAccessoryBag {
@@ -1809,11 +1854,26 @@ function parseAccessoryBag(
     highestMagicalPower: num(storage, "highest_magical_power"),
     highestUnlockedTuningSlot: num(tuning, "highest_unlocked_slot"),
     tuningSlots: parseTuningSlots(tuning),
+    tuningRefunds: parseTuningRefunds(tuning),
   };
 }
 
 function parseBestiary(member: Record<string, unknown>): SkyBlockBestiary {
   const bestiary = obj(member, "bestiary");
+  const miscellaneous = obj(bestiary, "miscellaneous");
+  const unmigratedKills: Record<string, number> = {};
+  const unmigratedDeaths: Record<string, number> = {};
+  for (const key of Object.keys(bestiary)) {
+    const value = bestiary[key];
+    if (typeof value !== "number") {
+      continue;
+    }
+    if (key.startsWith("kills_")) {
+      unmigratedKills[key] = value;
+    } else if (key.startsWith("deaths_")) {
+      unmigratedDeaths[key] = value;
+    }
+  }
   return {
     migration: bool(bestiary, "migration"),
     migratedStats: bool(bestiary, "migrated_stats"),
@@ -1821,9 +1881,12 @@ function parseBestiary(member: Record<string, unknown>): SkyBlockBestiary {
       obj(bestiary, "milestone"),
       "last_claimed_milestone",
     ),
-    maxKillsVisible: bool(obj(bestiary, "miscellaneous"), "max_kills_visible"),
+    maxKillsVisible: bool(miscellaneous, "max_kills_visible"),
+    milestonesNotifications: bool(miscellaneous, "milestones_notifications"),
     kills: numberRecord(obj(bestiary, "kills")),
     deaths: numberRecord(obj(bestiary, "deaths")),
+    unmigratedKills,
+    unmigratedDeaths,
   };
 }
 
@@ -1880,6 +1943,12 @@ function parseMiningCore(member: Record<string, unknown>): SkyBlockMiningCore {
       "current_daily_effect_last_changed",
     ),
     retroactiveTier2Token: bool(miningCore, "retroactive_tier2_token"),
+    hotmMigratorTreeResetSendMessage: bool(
+      miningCore,
+      "hotm_migrator_tree_reset_send_message",
+    ),
+    stashIfFullNotification: bool(miningCore, "stash_if_full_notification"),
+    lastReset: num(miningCore, "last_reset"),
     dailyOresMined: num(miningCore, "daily_ores_mined"),
     dailyOresMinedDay: num(miningCore, "daily_ores_mined_day"),
     dailyOresMinedMithrilOre: num(miningCore, "daily_ores_mined_mithril_ore"),
@@ -2009,8 +2078,12 @@ function parseChocolateFactory(
     barnCapacityLevel: num(easter, "rabbit_barn_capacity_level"),
     supremeChocolateBars: num(easter, "supreme_chocolate_bars"),
     refinedDarkCacaoTruffles: num(easter, "refined_dark_cacao_truffles"),
+    elDoradoProgress: num(easter, "el_dorado_progress"),
+    goldenClickAmount: num(easter, "golden_click_amount"),
+    goldenClickYear: num(easter, "golden_click_year"),
     rabbitSort: str(easter, "rabbit_sort"),
     rabbitFilter: str(easter, "rabbit_filter"),
+    rabbitHotspotFiler: str(easter, "rabbit_hotspot_filer"),
     lastViewed: num(easter, "last_viewed_chocolate_factory"),
     employees: numberRecord(obj(easter, "employees")),
     upgrades: {
@@ -2031,14 +2104,7 @@ function parseChocolateFactory(
       eggSlotCooldownSum: num(hitmen, "egg_slot_cooldown_sum"),
     },
     rabbits: {
-      collectedEggs: {
-        breakfast: num(collectedEggs, "breakfast"),
-        lunch: num(collectedEggs, "lunch"),
-        dinner: num(collectedEggs, "dinner"),
-        brunch: num(collectedEggs, "brunch"),
-        dejeuner: num(collectedEggs, "dejeuner"),
-        supper: num(collectedEggs, "supper"),
-      },
+      collectedEggs: numberRecord(collectedEggs),
       collectedLocations: stringArrayRecord(
         obj(rabbits, "collected_locations"),
       ),
@@ -2093,12 +2159,20 @@ function parseCrimsonIsleQuests(
   quests: Record<string, unknown>,
 ): SkyBlockCrimsonIsleQuests {
   const chickenQuest = obj(quests, "chicken_quest");
+  const rawQuestData = obj(quests, "quest_data");
+  const questData: Record<string, SkyBlockCrimsonIsleQuestEntry> = {};
+  for (const key of Object.keys(rawQuestData)) {
+    const entry = rawQuestData[key];
+    if (Array.isArray(entry)) {
+      questData[key] = entry.filter(
+        (item): item is string => typeof item === "string",
+      );
+    } else if (typeof entry === "object" && entry !== null) {
+      questData[key] = scalarRecord(entry as Record<string, unknown>);
+    }
+  }
   return {
-    questData: recordOf(obj(quests, "quest_data"), (entry) => ({
-      status: str(entry, "status"),
-      progress: num(entry, "progress"),
-      completedAt: num(entry, "completed_at"),
-    })),
+    questData,
     minibossKills: booleanRecord(obj(quests, "miniboss_data")),
     minibossDaily: scalarRecord(obj(quests, "miniboss_daily")),
     kuudraBossDaily: scalarRecord(obj(quests, "kuuda_boss_daily")),
@@ -2135,6 +2209,7 @@ function parseCrimsonIsle(
 ): SkyBlockCrimsonIsle {
   const isle = obj(member, "nether_island_player_data");
   const matriarch = obj(isle, "matriarch");
+  const npcPath = obj(isle, "npc_path");
   return {
     selectedFaction: str(isle, "selected_faction"),
     magesReputation: num(isle, "mages_reputation"),
@@ -2150,6 +2225,12 @@ function parseCrimsonIsle(
       pearlsCollected: num(matriarch, "pearls_collected"),
       lastAttempt: num(matriarch, "last_attempt"),
       recentRefreshes: numberArray(matriarch, "recent_refreshes"),
+    },
+    npcPath: {
+      npcId: str(npcPath, "npc_id"),
+      pathId: str(npcPath, "path_id"),
+      skin: str(npcPath, "skin"),
+      pathIndex: num(npcPath, "path_index"),
     },
     quests: parseCrimsonIsleQuests(obj(isle, "quests")),
   };
@@ -2172,12 +2253,7 @@ function parseObjectives(member: Record<string, unknown>): SkyBlockObjectives {
     if (key === "tutorial") {
       continue;
     }
-    const objective = obj(objectives, key);
-    parsed[key] = {
-      status: str(objective, "status"),
-      progress: num(objective, "progress"),
-      completedAt: num(objective, "completed_at"),
-    };
+    parsed[key] = scalarRecord(obj(objectives, key));
   }
   return {
     tutorial: stringArray(objectives, "tutorial"),
@@ -2188,11 +2264,16 @@ function parseObjectives(member: Record<string, unknown>): SkyBlockObjectives {
 function parseQuests(member: Record<string, unknown>): SkyBlockQuests {
   const quests = obj(member, "quests");
   const trapper = obj(quests, "trapper_quest");
+  const all: Record<string, SkyBlockScalarMap> = {};
+  for (const key of Object.keys(quests)) {
+    all[key] = scalarRecord(obj(quests, key));
+  }
   return {
     trapper: {
       peltCount: num(trapper, "pelt_count"),
       lastTaskTime: num(trapper, "last_task_time"),
     },
+    quests: all,
   };
 }
 
@@ -2206,9 +2287,9 @@ function parseExperimentation(
     serumsDrank: num(experimentation, "serums_drank"),
     claimedRetroactiveRng: bool(experimentation, "claimed_retroactive_rng"),
     chargeTrackTimestamp: num(experimentation, "charge_track_timestamp"),
-    pairings: numberRecord(obj(experimentation, "pairings")),
-    simon: numberRecord(obj(experimentation, "simon")),
-    numbers: numberRecord(obj(experimentation, "numbers")),
+    pairings: scalarRecord(obj(experimentation, "pairings")),
+    simon: scalarRecord(obj(experimentation, "simon")),
+    numbers: scalarRecord(obj(experimentation, "numbers")),
   };
 }
 
@@ -2291,6 +2372,7 @@ function parseRift(member: Record<string, unknown>): SkyBlockRift {
   const castle = obj(rift, "castle");
   const wyldWoods = obj(rift, "wyld_woods");
   const dreadFarm = obj(rift, "dreadfarm");
+  const slayerQuest = rift.slayer_quest;
   return {
     access: {
       lastFree: num(access, "last_free"),
@@ -2348,6 +2430,12 @@ function parseRift(member: Record<string, unknown>): SkyBlockRift {
       shaniaStage: num(dreadFarm, "shania_stage"),
       caducousFeederUses: numberArray(dreadFarm, "caducous_feeder_uses"),
     },
+    slayerQuest:
+      typeof slayerQuest === "object" &&
+      slayerQuest !== null &&
+      !Array.isArray(slayerQuest)
+        ? parseSlayerQuest(slayerQuest as Record<string, unknown>)
+        : null,
     lifetimePurchasedBoundaries: stringArray(
       rift,
       "lifetime_purchased_boundaries",
@@ -2511,6 +2599,8 @@ function parseShards(member: Record<string, unknown>): SkyBlockShards {
   return {
     shardSort: str(shards, "shard_sort"),
     fusionResultSort: str(shards, "fusion_result_sort"),
+    fusionSort: str(shards, "fusion_sort"),
+    fused: num(shards, "fused"),
     owned: objectArray(shards, "owned").map((entry) => ({
       type: str(entry, "type"),
       amountOwned: num(entry, "amount_owned"),
@@ -2554,6 +2644,8 @@ function parseLoadout(member: Record<string, unknown>): SkyBlockLoadout {
 function parseMember(member: Record<string, unknown>): SkyBlockMember {
   return {
     playerId: str(member, "player_id"),
+    firstJoinHub: num(member, "first_join_hub"),
+    stats: numberRecord(obj(member, "stats")),
     currencies: parseCurrencies(member),
     fairySouls: parseFairySouls(member),
     leveling: parseLeveling(member),

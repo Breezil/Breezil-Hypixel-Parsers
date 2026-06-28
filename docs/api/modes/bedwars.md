@@ -65,6 +65,7 @@ interface BedWarsStats {
   readonly activeCosmetics: BedWarsActiveCosmetics;
   readonly boxes: BedWarsBoxes;
   readonly favorites: BedWarsFavorites;
+  readonly favoriteCosmetics: Readonly<Record<string, readonly string[]>>;
   readonly figurines: BedWarsFigurines;
   readonly boon: BedWarsBoon;
   readonly dreamfeast: BedWarsDreamfeast;
@@ -87,17 +88,18 @@ interface BedWarsStats {
 }
 ```
 
-| Field                            | Notes                                                               |
-| -------------------------------- | ------------------------------------------------------------------- |
-| `coins`                          | Reads `coins`, falling back to `tokens` when `coins` is `0`/absent. |
-| `experience`                     | Raw `Experience`.                                                   |
-| `experienceNew`                  | Raw `Experience_new`.                                               |
-| `level`                          | Passed through from the `level` argument.                           |
-| `gamesPlayedLegacy`              | Raw `games_played_bedwars_1`.                                       |
-| `lastHytaleAd` / `lastTourneyAd` | Epoch-ms timestamps as `Date`, or `null`.                           |
-| `overall`                        | Stats with no mode prefix.                                          |
-| `threes`                         | `four_three_` mode.                                                 |
-| `castle`                         | `castle_` mode.                                                     |
+| Field                            | Notes                                                                                                                                                    |
+| -------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `coins`                          | Reads `coins`, falling back to `tokens` when `coins` is `0`/absent.                                                                                      |
+| `experience`                     | Raw `Experience`.                                                                                                                                        |
+| `experienceNew`                  | Raw `Experience_new`.                                                                                                                                    |
+| `level`                          | Passed through from the `level` argument.                                                                                                                |
+| `gamesPlayedLegacy`              | Raw `games_played_bedwars_1`.                                                                                                                            |
+| `lastHytaleAd` / `lastTourneyAd` | Epoch-ms timestamps as `Date`, or `null`.                                                                                                                |
+| `favoriteCosmetics`              | Map keyed by cosmetic category (dynamic raw keys under `favorites`); each value is a string array. Contains only the categories present in the raw data. |
+| `overall`                        | Stats with no mode prefix.                                                                                                                               |
+| `threes`                         | `four_three_` mode.                                                                                                                                      |
+| `castle`                         | `castle_` mode.                                                                                                                                          |
 
 ---
 

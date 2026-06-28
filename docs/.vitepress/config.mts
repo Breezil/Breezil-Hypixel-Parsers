@@ -54,6 +54,13 @@ export default {
           { text: "Warlords", link: "/api/modes/warlords" },
           { text: "Turbo Kart Racers", link: "/api/modes/turbokartracers" },
           { text: "Arena Brawl", link: "/api/modes/arenabrawl" },
+          { text: "Wool Games", link: "/api/modes/woolgames" },
+          { text: "Speed UHC", link: "/api/modes/speeduhc" },
+          { text: "SkyClash", link: "/api/modes/skyclash" },
+          { text: "True Combat", link: "/api/modes/truecombat" },
+          { text: "Legacy", link: "/api/modes/legacy" },
+          { text: "Main Lobby", link: "/api/modes/mainlobby" },
+          { text: "Housing (Player Stats)", link: "/api/modes/housing" },
         ],
       },
       {

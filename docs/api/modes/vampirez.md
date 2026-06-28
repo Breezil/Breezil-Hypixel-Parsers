@@ -1,23 +1,35 @@
 # VampireZ
 
-Parsers for a player's VampireZ statistics. Every value mirrors the raw Hypixel API field-for-field with zero computation or derived values.
+The VampireZ module exposes a single parser, `parseVampireZ`, which mirrors the raw `stats.VampireZ` block of the Hypixel player API field-for-field into readonly, fully-typed objects. Every value below is read straight from the raw JSON with no computation, no ratios, and no derived totals.
 
 ## parseVampireZ
 
 Parses a player's VampireZ stats (`stats.VampireZ`) into a typed object.
 
 ```ts
-export function parseVampireZ(
-  stats: Record<string, unknown>,
-): VampireZStats | null;
+function parseVampireZ(stats: Record<string, unknown>): VampireZStats | null;
 ```
 
-Returns `null` when `stats.VampireZ` is absent, not an object, or an array. Otherwise it returns a fully populated `VampireZStats`; missing numeric fields default to `0`, booleans to `false`, strings to `""`, and array/nested blocks to their empty or zero-filled forms.
+### Null / empty behavior
+
+`parseVampireZ` returns `null` when `stats.VampireZ` is missing or is not a plain object (i.e. it is absent, `null`, or an array). Otherwise it always returns a fully-populated `VampireZStats` object filled in by the safe readers used throughout the module:
+
+- Missing or non-number values become `0`.
+- Missing or non-string values become `""`.
+- Boolean fields are `true` only when the raw value is exactly `true`, otherwise `false`.
+- `packages` becomes an empty array (`[]`) when absent or not an array, keeping only string entries.
+- `boughtDyeColors` collects every raw key prefixed with `bought_dye_color:` whose value is exactly `true`, with the prefix stripped; it is `[]` when none are present.
+
+---
+
+## Returned type tree
 
 ### VampireZStats
 
+The root object returned by `parseVampireZ`.
+
 ```ts
-export interface VampireZStats {
+interface VampireZStats {
   readonly coins: number;
   readonly goldBought: number;
   readonly blood: boolean;
@@ -25,10 +37,17 @@ export interface VampireZStats {
   readonly usingOld: boolean;
   readonly usingOldVamp: boolean;
   readonly disableKillPing: boolean;
+  readonly combatTracker: boolean;
   readonly noStartingCompass: boolean;
   readonly noStartingGear: boolean;
+  readonly noStartingFood: boolean;
+  readonly noStartingPotion: boolean;
+  readonly noStartingTorch: boolean;
+  readonly disabledLootDrops: boolean;
   readonly prefixDisabled: boolean;
   readonly vampColor: string;
+  readonly vampireColor: string;
+  readonly survivorColor: string;
   readonly boughtDyeColors: readonly string[];
   readonly zombieKills: number;
   readonly zombieDoubler: number;
@@ -56,10 +75,17 @@ export interface VampireZStats {
 | `usingOld`               | `using_old`               |                                                           |
 | `usingOldVamp`           | `using_old_vamp`          |                                                           |
 | `disableKillPing`        | `disable_kill_ping`       |                                                           |
+| `combatTracker`          | `combatTracker`           |                                                           |
 | `noStartingCompass`      | `no_starting_compass`     |                                                           |
 | `noStartingGear`         | `no_starting_gear`        |                                                           |
+| `noStartingFood`         | `no_starting_food`        |                                                           |
+| `noStartingPotion`       | `no_starting_potion`      |                                                           |
+| `noStartingTorch`        | `no_starting_torch`       |                                                           |
+| `disabledLootDrops`      | `disabled_loot_drops`     |                                                           |
 | `prefixDisabled`         | `prefix_disabled`         |                                                           |
 | `vampColor`              | `vamp_color`              |                                                           |
+| `vampireColor`           | `vampirecolor`            |                                                           |
+| `survivorColor`          | `survivor_color`          |                                                           |
 | `boughtDyeColors`        | `bought_dye_color:*` keys | See note below.                                           |
 | `zombieKills`            | `zombie_kills`            |                                                           |
 | `zombieDoubler`          | `zombie_doubler`          |                                                           |
@@ -74,14 +100,19 @@ export interface VampireZStats {
 
 ### VampireZMapVotes
 
-Map vote counts (`votes` field of `VampireZStats`).
+Per-map vote counts (`votes` field of `VampireZStats`), each read from the raw `votes_<Map>` key.
 
 ```ts
-export interface VampireZMapVotes {
+interface VampireZMapVotes {
   readonly cavern: number;
+  readonly church: number;
   readonly darkValley: number;
+  readonly dusk: number;
   readonly erias: number;
+  readonly kudong: number;
   readonly overhill: number;
+  readonly plundered: number;
+  readonly pyramids: number;
   readonly village: number;
 }
 ```
@@ -89,9 +120,14 @@ export interface VampireZMapVotes {
 | Field        | Raw source          |
 | ------------ | ------------------- |
 | `cavern`     | `votes_Cavern`      |
+| `church`     | `votes_Church`      |
 | `darkValley` | `votes_Dark Valley` |
+| `dusk`       | `votes_Dusk`        |
 | `erias`      | `votes_Erias`       |
+| `kudong`     | `votes_Kudong`      |
 | `overhill`   | `votes_Overhill`    |
+| `plundered`  | `votes_Plundered`   |
+| `pyramids`   | `votes_Pyramids`    |
 | `village`    | `votes_Village`     |
 
 ### VampireZRoleStats
@@ -99,7 +135,7 @@ export interface VampireZMapVotes {
 Per-role kill/death/win totals (used by both `human` and `vampire`).
 
 ```ts
-export interface VampireZRoleStats {
+interface VampireZRoleStats {
   readonly kills: number;
   readonly deaths: number;
   readonly wins: number;
@@ -117,7 +153,7 @@ export interface VampireZRoleStats {
 Periodic win counters (used by both `monthly` and `weekly`).
 
 ```ts
-export interface VampireZPeriodWins {
+interface VampireZPeriodWins {
   readonly humanWinsA: number;
   readonly humanWinsB: number;
   readonly vampireWinsA: number;
@@ -137,7 +173,7 @@ export interface VampireZPeriodWins {
 Purchased/levelled perk values (`perks` field of `VampireZStats`).
 
 ```ts
-export interface VampireZPerks {
+interface VampireZPerks {
   readonly advancedSwag: number;
   readonly babyHater: number;
   readonly basicSwag: number;

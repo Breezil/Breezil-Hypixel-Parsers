@@ -124,6 +124,7 @@ interface SkyWarsStats {
   readonly megaPerks: SkyWarsModePerks;
   readonly rankedPerks: SkyWarsModePerks;
   readonly universalPerks: SkyWarsUniversalPerks;
+  readonly universalPerkToggles: Readonly<Record<string, boolean>>;
   readonly perkSlots: SkyWarsPerkSlots;
   readonly disabledPerks: Readonly<Record<string, readonly string[]>>;
   readonly mythicKits: SkyWarsMythicKits;
@@ -133,18 +134,19 @@ interface SkyWarsStats {
 
 Notable top-level fields:
 
-| Field                                                | Meaning                                                                 |
-| ---------------------------------------------------- | ----------------------------------------------------------------------- | ----- |
-| `coins`                                              | SkyWars coin balance                                                    |
-| `tokens`                                             | Cosmetic token balance                                                  |
-| `experience` / `experiencePending`                   | Raw SkyWars XP and pending XP                                           |
-| `levelFormatted` / `levelFormattedWithBrackets`      | Pre-formatted level strings as supplied by the API                      |
-| `souls` / `soulWell` / `paidSouls`                   | Soul economy counters                                                   |
-| `opalRollback` / `freeLootChestNpc` / `opalRollback` | Epoch-ms timestamps surfaced as `Date                                   | null` |
-| `chestHistory` / `chestHistoryNew`                   | Raw chest history string lists                                          |
-| `favoriteKits`                                       | Map keyed by the suffix after `favorite_kits_`, value is a string array |
-| `tourneyInstances`                                   | Map keyed by tourney instance id (derived from `tourney_<id>_wins`)     |
-| `perKit`                                             | Map keyed by kit id (every `*_kit_*` key except mythical kits)          |
+| Field                                                | Meaning                                                                                                                                                                 |
+| ---------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `coins`                                              | SkyWars coin balance                                                                                                                                                    |
+| `tokens`                                             | Cosmetic token balance                                                                                                                                                  |
+| `experience` / `experiencePending`                   | Raw SkyWars XP and pending XP                                                                                                                                           |
+| `levelFormatted` / `levelFormattedWithBrackets`      | Pre-formatted level strings as supplied by the API                                                                                                                      |
+| `souls` / `soulWell` / `paidSouls`                   | Soul economy counters                                                                                                                                                   |
+| `opalRollback` / `freeLootChestNpc` / `opalRollback` | Epoch-ms timestamps surfaced as `Date                                   \| null`                                                                                        |
+| `chestHistory` / `chestHistoryNew`                   | Raw chest history string lists                                                                                                                                          |
+| `favoriteKits`                                       | Map keyed by the suffix after `favorite_kits_`, value is a string array                                                                                                 |
+| `tourneyInstances`                                   | Map keyed by tourney instance id (derived from `tourney_<id>_wins`)                                                                                                     |
+| `perKit`                                             | Map keyed by kit id (every `*_kit_*` key except mythical kits)                                                                                                          |
+| `universalPerkToggles`                               | Map keyed by toggle id (every `toggle_*` raw key except the `solo_`/`team_`/`mega_`/`ranked_` mode prefixes), value is `true` only when the raw value is exactly `true` |
 
 The dynamic maps above are collected by scanning the raw keys; their keys are the captured portions of the matching patterns and never include synthetic or computed entries.
 
