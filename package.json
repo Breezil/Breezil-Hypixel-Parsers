@@ -1,6 +1,6 @@
 {
   "name": "@breezil/hypixel-parsers",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "description": "Rich, typed parsers for Hypixel API JSON - players, guilds, SkyBlock, and every game mode turned into readonly fully-typed objects. Pure, no network.",
   "keywords": [
     "breezil",
@@ -52,4 +52,3 @@
     "prismarine-nbt": "^2.8.0"
   }
 }
-
