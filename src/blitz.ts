@@ -33,6 +33,7 @@ export interface BlitzKitCombatStats extends BlitzCombatStats {
   readonly blocksTraveledHorse: number;
   readonly blocksTraveledMinecart: number;
   readonly blocksTraveledPig: number;
+  readonly extra: Readonly<Record<string, number>>;
 }
 
 export interface BlitzKitStats extends BlitzKitCombatStats {
@@ -58,6 +59,8 @@ export interface BlitzPrivateGamesSettings {
   readonly nightTime: boolean;
   readonly noKits: boolean;
   readonly maxKitsAndKillEffects: boolean;
+  readonly lowGravity: boolean;
+  readonly oneHitOneKill: boolean;
 }
 
 export interface BlitzLeaderboardSettings {
@@ -97,6 +100,8 @@ export interface BlitzStats extends BlitzCombatStats {
   readonly alternativeKillMessageEnabled: boolean;
   readonly prefersFullKitsMenu: boolean;
   readonly disablePrestigeFinisher: boolean;
+  readonly fancyMode: boolean;
+  readonly combatTracker: boolean;
   readonly toggled: boolean;
   readonly toggleKillCounter: number;
   readonly votes: Readonly<Record<string, number>>;
@@ -162,6 +167,38 @@ const INVENTORY_NAMES: Readonly<Record<string, string>> = {
   slimeyslime: "SlimeySlime",
 };
 
+const KIT_STAT_STEMS: ReadonlySet<string> = new Set([
+  "wins",
+  "wins_teams",
+  "games_played",
+  "arrows_hit",
+  "arrows_fired",
+  "chests_opened",
+  "damage",
+  "damage_taken",
+  "kills",
+  "deaths",
+  "mobs_spawned",
+  "potions_drunk",
+  "potions_thrown",
+  "time_played",
+  "exp",
+  "taunt_kills",
+  "explosive_kills",
+  "fall_damage",
+  "items_enchanted",
+  "bottles_thrown",
+  "eggs_collected",
+  "eggs_thrown",
+  "snowballs_thrown",
+  "rails_placed",
+  "tnt_placed",
+  "blocks_traveled_boat",
+  "blocks_traveled_horse",
+  "blocks_traveled_minecart",
+  "blocks_traveled_pig",
+]);
+
 function stringRecord(value: Record<string, unknown>): Record<string, string> {
   const result: Record<string, string> = {};
   for (const [key, item] of Object.entries(value)) {
@@ -217,6 +254,32 @@ function collectStringFamily(
   return result;
 }
 
+function collectKitExtra(
+  blitz: Record<string, unknown>,
+  prefix: string,
+  kitId: string,
+): Readonly<Record<string, number>> {
+  const suffix = `_${kitId}`;
+  const result: Record<string, number> = {};
+  for (const [key, value] of Object.entries(blitz)) {
+    if (
+      typeof value === "number" &&
+      key.startsWith(prefix) &&
+      key.endsWith(suffix)
+    ) {
+      const stem = key.slice(prefix.length, key.length - suffix.length);
+      if (
+        stem.length > 0 &&
+        !stem.startsWith("tourney_") &&
+        !KIT_STAT_STEMS.has(stem)
+      ) {
+        result[stem] = value;
+      }
+    }
+  }
+  return result;
+}
+
 function parseCombat(
   blitz: Record<string, unknown>,
   prefix: string,
@@ -266,6 +329,7 @@ function parseKitCombat(
       `${prefix}blocks_traveled_minecart${suffix}`,
     ),
     blocksTraveledPig: num(blitz, `${prefix}blocks_traveled_pig${suffix}`),
+    extra: collectKitExtra(blitz, prefix, kitId),
   };
 }
 
@@ -339,6 +403,8 @@ function parsePrivateGames(
       privateGames,
       "enable_max_kits_and_kill_effects",
     ),
+    lowGravity: bool(privateGames, "low_gravity"),
+    oneHitOneKill: bool(privateGames, "one_hit_one_kill_blitz"),
   };
 }
 
@@ -401,6 +467,8 @@ export function parseBlitz(stats: Record<string, unknown>): BlitzStats | null {
     ),
     prefersFullKitsMenu: bool(blitz, "prefers_full_kits_menu"),
     disablePrestigeFinisher: bool(blitz, "disableprestigefinisher"),
+    fancyMode: bool(blitz, "fancyMode"),
+    combatTracker: bool(blitz, "combatTracker"),
     toggled: bool(blitz, "toggled"),
     toggleKillCounter: num(blitz, "togglekillcounter"),
     votes: collectNumberFamily(blitz, /^votes_(.+)$/),

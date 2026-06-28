@@ -54,6 +54,7 @@ export interface CopsAndCrimsTourneyStats {
   readonly copKills: number;
   readonly deaths: number;
   readonly wins: number;
+  readonly assists: number;
   readonly gamePlays: number;
   readonly roundWins: number;
   readonly bombsPlanted: number;
@@ -82,6 +83,9 @@ export interface CopsAndCrimsWinsByMap {
   readonly atomicV2: number;
   readonly melonFactory: number;
   readonly melonFactoryV2: number;
+  readonly melonfactory: number;
+  readonly cobblestone: number;
+  readonly test: number;
 }
 
 export interface CopsAndCrimsGuns {
@@ -131,6 +135,9 @@ export interface CopsAndCrimsSettings {
   readonly moneyMessages: boolean;
   readonly screenTint: boolean;
   readonly spawnArea: boolean;
+  readonly soundsBodyshot: boolean;
+  readonly soundsHeadshot: boolean;
+  readonly soundsDefuseProgress: boolean;
 }
 
 export interface CopsAndCrimsLeaderboardSettings {
@@ -140,6 +147,19 @@ export interface CopsAndCrimsLeaderboardSettings {
 
 export interface CopsAndCrimsPrivateGames {
   readonly mcgoPrivateChallengeMode: boolean;
+  readonly mcgoPrivateAfk: boolean;
+  readonly mcgoPrivateGunUpgrades: boolean;
+  readonly mcgoPrivateInfiniteAmmo: boolean;
+  readonly mcgoPrivateInstakill: boolean;
+  readonly mcgoPrivateMoneybags: boolean;
+}
+
+export interface CopsAndCrimsLegacyWeaponUpgrades {
+  readonly ak47DamageIncrease: number;
+  readonly ak47RecoilReduction: number;
+  readonly ak47ReloadSpeedReduction: number;
+  readonly ak47CostReduction: number;
+  readonly uspDamageIncrease: number;
 }
 
 export interface CopsAndCrimsPerkBaseCoin {
@@ -199,11 +219,13 @@ export interface CopsAndCrimsStats {
   readonly showLobbyPrefix: boolean;
   readonly showKillsInPrefix: boolean;
   readonly shopSort: string;
+  readonly shopSortEnableOwnedFirst: boolean;
   readonly packages: readonly string[];
   readonly claimedLevelRewards: readonly number[];
   readonly settings: CopsAndCrimsSettings;
   readonly leaderboardSettings: CopsAndCrimsLeaderboardSettings;
   readonly privateGames: CopsAndCrimsPrivateGames;
+  readonly legacyWeaponUpgrades: CopsAndCrimsLegacyWeaponUpgrades;
   readonly perks: CopsAndCrimsPerks;
   readonly upgrades: CopsAndCrimsUpgrades;
   readonly selected: CopsAndCrimsSelectedCosmetics;
@@ -212,6 +234,7 @@ export interface CopsAndCrimsStats {
   readonly winsByMap: CopsAndCrimsWinsByMap;
   readonly guns: CopsAndCrimsGuns;
   readonly deathmatch: CopsAndCrimsGamemodeStats;
+  readonly deathmatchParty: CopsAndCrimsGamemodeStats;
   readonly gungame: CopsAndCrimsGungameStats;
   readonly tourneyDefusalA: CopsAndCrimsTourneyStats;
   readonly tourneyDefusalB: CopsAndCrimsTourneyStats;
@@ -317,6 +340,7 @@ function parseTourney(
     copKills: num(block, `cop_kills_tourney_mcgo_defusal_${suffix}`),
     deaths: num(block, `deaths_tourney_mcgo_defusal_${suffix}`),
     wins: num(block, `game_wins_tourney_mcgo_defusal_${suffix}`),
+    assists: num(block, `assists_tourney_mcgo_defusal_${suffix}`),
     gamePlays: num(block, `game_plays_tourney_mcgo_defusal_${suffix}`),
     roundWins: num(block, `round_wins_tourney_mcgo_defusal_${suffix}`),
     bombsPlanted: num(block, `bombs_planted_tourney_mcgo_defusal_${suffix}`),
@@ -347,6 +371,9 @@ function parseWinsByMap(block: Record<string, unknown>): CopsAndCrimsWinsByMap {
     atomicV2: num(block, "game_wins_atomic v2"),
     melonFactory: num(block, "game_wins_melon factory"),
     melonFactoryV2: num(block, "game_wins_melon factory v2"),
+    melonfactory: num(block, "game_wins_melonfactory"),
+    cobblestone: num(block, "game_wins_cobblestone"),
+    test: num(block, "game_wins_test"),
   };
 }
 
@@ -406,6 +433,9 @@ function parseSettings(block: Record<string, unknown>): CopsAndCrimsSettings {
     moneyMessages: bool(block, "setting_money_messages"),
     screenTint: bool(block, "setting_screen_tint"),
     spawnArea: bool(block, "setting_spawn_area"),
+    soundsBodyshot: bool(block, "setting_sounds_bodyshot"),
+    soundsHeadshot: bool(block, "setting_sounds_headshot"),
+    soundsDefuseProgress: bool(block, "setting_sounds_defuse_progress"),
   };
 }
 
@@ -422,11 +452,26 @@ function parseLeaderboardSettings(
 function parsePrivateGames(
   block: Record<string, unknown>,
 ): CopsAndCrimsPrivateGames {
+  const privategames = obj(block, "privategames");
   return {
-    mcgoPrivateChallengeMode: bool(
-      obj(block, "privategames"),
-      "mcgo_private_challenge_mode",
-    ),
+    mcgoPrivateChallengeMode: bool(privategames, "mcgo_private_challenge_mode"),
+    mcgoPrivateAfk: bool(privategames, "mcgo_private_afk"),
+    mcgoPrivateGunUpgrades: bool(privategames, "mcgo_private_gun_upgrades"),
+    mcgoPrivateInfiniteAmmo: bool(privategames, "mcgo_private_infinite_ammo"),
+    mcgoPrivateInstakill: bool(privategames, "mcgo_private_instakill"),
+    mcgoPrivateMoneybags: bool(privategames, "mcgo_private_moneybags"),
+  };
+}
+
+function parseLegacyWeaponUpgrades(
+  block: Record<string, unknown>,
+): CopsAndCrimsLegacyWeaponUpgrades {
+  return {
+    ak47DamageIncrease: num(block, "ak_47_damage_increase"),
+    ak47RecoilReduction: num(block, "ak_47_recoil_reduction"),
+    ak47ReloadSpeedReduction: num(block, "ak_47_reload_speed_reduction"),
+    ak47CostReduction: num(block, "ak_47_cost_reduction"),
+    uspDamageIncrease: num(block, "usp_damage_increase"),
   };
 }
 
@@ -517,11 +562,13 @@ export function parseCopsAndCrims(
     showLobbyPrefix: bool(block, "show_lobby_prefix"),
     showKillsInPrefix: bool(block, "show_kills_in_prefix"),
     shopSort: str(block, "shop_sort"),
+    shopSortEnableOwnedFirst: bool(block, "shop_sort_enable_owned_first"),
     packages: strList(block, "packages"),
     claimedLevelRewards: numList(block, "claimed_level_rewards"),
     settings: parseSettings(block),
     leaderboardSettings: parseLeaderboardSettings(block),
     privateGames: parsePrivateGames(block),
+    legacyWeaponUpgrades: parseLegacyWeaponUpgrades(block),
     perks: parsePerks(block),
     upgrades: parseUpgrades(block),
     selected: parseSelected(block),
@@ -530,6 +577,7 @@ export function parseCopsAndCrims(
     winsByMap: parseWinsByMap(block),
     guns: parseGuns(block),
     deathmatch: parseGamemode(block, "deathmatch"),
+    deathmatchParty: parseGamemode(block, "deathmatch_party"),
     gungame: parseGungame(block),
     tourneyDefusalA: parseTourney(block, "0"),
     tourneyDefusalB: parseTourney(block, "1"),

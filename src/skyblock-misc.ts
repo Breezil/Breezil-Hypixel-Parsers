@@ -48,9 +48,15 @@ export interface SkyBlockGardenVisitorRequirement {
   readonly amount: number;
 }
 
+export interface SkyBlockGardenVisitorReward {
+  readonly itemId: string;
+  readonly amount: number;
+}
+
 export interface SkyBlockGardenActiveVisitor {
   readonly visitor: string;
   readonly requirements: readonly SkyBlockGardenVisitorRequirement[];
+  readonly bonusRewards: readonly SkyBlockGardenVisitorReward[];
   readonly status: string;
   readonly position: number;
 }
@@ -66,23 +72,26 @@ function parseVisitorRequirement(
   };
 }
 
+function objectArray(value: unknown): Record<string, unknown>[] {
+  return Array.isArray(value)
+    ? value.filter(
+        (entry): entry is Record<string, unknown> =>
+          typeof entry === "object" && entry !== null && !Array.isArray(entry),
+      )
+    : [];
+}
+
 function parseActiveVisitor(
   visitor: Record<string, unknown>,
   name: string,
 ): SkyBlockGardenActiveVisitor {
-  const requirements = visitor.requirement;
   return {
     visitor: name,
-    requirements: Array.isArray(requirements)
-      ? requirements
-          .filter(
-            (entry): entry is Record<string, unknown> =>
-              typeof entry === "object" &&
-              entry !== null &&
-              !Array.isArray(entry),
-          )
-          .map(parseVisitorRequirement)
-      : [],
+    requirements: objectArray(visitor.requirement).map(parseVisitorRequirement),
+    bonusRewards: objectArray(visitor.bonus_rewards).map((reward) => ({
+      itemId: str(reward, "item_id"),
+      amount: num(reward, "amount"),
+    })),
     status: str(visitor, "status"),
     position: num(visitor, "position"),
   };

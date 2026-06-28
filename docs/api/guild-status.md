@@ -1,21 +1,60 @@
 # Guild, Status & Recent Games
 
-This page documents the guild, player status, and recent games parsers from `@breezil/hypixel-parsers`. Each parser is strict-raw: it mirrors the raw Hypixel API fields exactly, with no computed, derived, or aggregated values.
+These three parsers from `@breezil/hypixel-parsers` cover guilds (`/guild`), player status (`/status`), and recent games (`/recentgames`). Each is strict-raw: it mirrors the raw Hypixel API fields field-for-field into readonly, fully-typed objects, with no computed, derived, or aggregated values.
 
 ## parseGuild
 
-Parses a guild (the `/guild` endpoint) into a typed object.
+Parses a guild (`/guild`) into a typed object.
 
 ```ts
-export function parseGuild(guild: Record<string, unknown>): Guild | null;
+function parseGuild(guild: Record<string, unknown>): Guild | null;
 ```
 
-Returns `null` when the supplied guild object is empty (no keys). Otherwise returns a fully populated `Guild`.
+### Null / empty behavior
+
+`parseGuild` returns `null` when the supplied guild object has no keys; otherwise it returns a fully-populated `Guild`. Missing fields are filled in by the safe readers used throughout the module:
+
+- Missing or non-number values become `0`.
+- Missing or non-string values become `""`.
+- Boolean fields are `true` only when the raw value is exactly `true`, otherwise `false`.
+- `Date | null` fields are `null` when the raw value is absent or not a positive epoch-ms number.
+- List fields (`members`, `ranks`, `preferredGames`, `banner.patterns`) become empty arrays (`[]`) when the raw value is missing or not an array.
+- The map fields (`achievements`, `guildExpByGameType`, member `expHistory`) include only entries whose raw values are numbers.
+
+## parseStatus
+
+Parses a player's status (`/status`) into a typed object.
+
+```ts
+function parseStatus(session: Record<string, unknown>): PlayerStatus;
+```
+
+### Null / empty behavior
+
+`parseStatus` always returns a `PlayerStatus`; it never returns `null`. The `gameType`, `mode`, and `map` fields are `null` when the raw string value is empty (`""`), otherwise the raw string. `online` is `true` only when the raw value is exactly `true`.
+
+## parseRecentGames
+
+Parses a player's recent games (`/recentgames`) into a typed object.
+
+```ts
+function parseRecentGames(games: unknown[]): RecentGame[];
+```
+
+### Null / empty behavior
+
+`parseRecentGames` returns an array of `RecentGame`. Entries that are not plain objects (non-objects, `null`, or arrays) are skipped, so the result is an empty array when no valid entries are present. Per game, `mode` and `map` are `null` when the raw string is empty (`""`); `startedAt` and `endedAt` are `null` when the raw timestamp is absent or not a positive epoch-ms number.
+
+---
+
+## Returned type tree
 
 ### Guild
 
+The root object returned by `parseGuild`.
+
 ```ts
-export interface Guild {
+interface Guild {
   readonly id: string;
   readonly name: string;
   readonly nameLower: string;
@@ -40,35 +79,21 @@ export interface Guild {
 }
 ```
 
-| Field                | Raw key              | Notes                                      |
-| -------------------- | -------------------- | ------------------------------------------ |
-| `id`                 | `_id`                | Guild identifier.                          |
-| `name`               | `name`               | Guild display name.                        |
-| `nameLower`          | `name_lower`         | Lowercased name.                           |
-| `description`        | `description`        | Guild description text.                    |
-| `tag`                | `tag`                | Guild tag.                                 |
-| `tagColor`           | `tagColor`           | Color of the guild tag.                    |
-| `exp`                | `exp`                | Raw guild experience value.                |
-| `createdAt`          | `created`            | Creation date, or `null` when absent.      |
-| `coins`              | `coins`              | Current coin balance.                      |
-| `coinsEver`          | `coinsEver`          | Total coins ever earned.                   |
-| `members`            | `members`            | List of guild members.                     |
-| `ranks`              | `ranks`              | List of guild ranks.                       |
-| `preferredGames`     | `preferredGames`     | List of preferred game names.              |
-| `publiclyListed`     | `publiclyListed`     | Whether the guild is publicly listed.      |
-| `joinable`           | `joinable`           | Whether the guild is joinable.             |
-| `hideGmTag`          | `hideGmTag`          | Whether the GM tag is hidden.              |
-| `chatMuteUntil`      | `chatMute`           | Chat mute expiry date, or `null`.          |
-| `banner`             | `banner`             | Guild banner definition.                   |
-| `legacyRanking`      | `legacyRanking`      | Raw legacy ranking value.                  |
-| `achievements`       | `achievements`       | Map of achievement keys to numeric values. |
-| `guildExpByGameType` | `guildExpByGameType` | Map of game type to raw guild experience.  |
+| Field                | Notes                                                   |
+| -------------------- | ------------------------------------------------------- |
+| `id`                 | Raw `_id`.                                              |
+| `nameLower`          | Raw `name_lower`.                                       |
+| `createdAt`          | Raw `created`, epoch-ms timestamp as `Date`, or `null`. |
+| `chatMuteUntil`      | Raw `chatMute`, chat mute expiry as `Date`, or `null`.  |
+| `achievements`       | Map of achievement key to numeric value.                |
+| `guildExpByGameType` | Map of game-type key to raw guild experience.           |
 
 ### GuildMember
 
 ```ts
-export interface GuildMember {
+interface GuildMember {
   readonly uuid: string;
+  readonly name: string;
   readonly rank: string;
   readonly joinedAt: Date | null;
   readonly questParticipation: number;
@@ -77,19 +102,16 @@ export interface GuildMember {
 }
 ```
 
-| Field                | Raw key              | Notes                                          |
-| -------------------- | -------------------- | ---------------------------------------------- |
-| `uuid`               | `uuid`               | Member UUID.                                   |
-| `rank`               | `rank`               | Member's rank name.                            |
-| `joinedAt`           | `joined`             | Join date, or `null` when absent.              |
-| `questParticipation` | `questParticipation` | Raw quest participation value.                 |
-| `expHistory`         | `expHistory`         | Map of date keys to numeric experience values. |
-| `mutedTill`          | `mutedTill`          | Mute expiry date, or `null`.                   |
+| Field        | Notes                                              |
+| ------------ | -------------------------------------------------- |
+| `joinedAt`   | Raw `joined`, join timestamp as `Date`, or `null`. |
+| `expHistory` | Map of date key to numeric experience value.       |
+| `mutedTill`  | Raw `mutedTill`, mute expiry as `Date`, or `null`. |
 
 ### GuildRank
 
 ```ts
-export interface GuildRank {
+interface GuildRank {
   readonly name: string;
   readonly tag: string;
   readonly default: boolean;
@@ -98,58 +120,44 @@ export interface GuildRank {
 }
 ```
 
-| Field       | Raw key    | Notes                             |
-| ----------- | ---------- | --------------------------------- |
-| `name`      | `name`     | Rank name.                        |
-| `tag`       | `tag`      | Rank tag.                         |
-| `default`   | `default`  | Whether this is the default rank. |
-| `priority`  | `priority` | Raw rank priority value.          |
-| `createdAt` | `created`  | Rank creation date, or `null`.    |
+| Field       | Notes                                              |
+| ----------- | -------------------------------------------------- |
+| `createdAt` | Raw `created`, rank creation timestamp, or `null`. |
 
 ### GuildBanner
 
 ```ts
-export interface GuildBanner {
+interface GuildBanner {
   readonly base: string;
   readonly patterns: readonly GuildBannerPattern[];
 }
 ```
 
-| Field      | Raw key    | Notes                     |
-| ---------- | ---------- | ------------------------- |
-| `base`     | `Base`     | Base color of the banner. |
-| `patterns` | `Patterns` | List of banner patterns.  |
+| Field      | Notes                                          |
+| ---------- | ---------------------------------------------- |
+| `base`     | Raw `Base`, banner base color.                 |
+| `patterns` | Raw `Patterns`, list of banner pattern layers. |
 
 ### GuildBannerPattern
 
 ```ts
-export interface GuildBannerPattern {
+interface GuildBannerPattern {
   readonly pattern: string;
   readonly color: string;
 }
 ```
 
-| Field     | Raw key   | Notes               |
-| --------- | --------- | ------------------- |
-| `pattern` | `Pattern` | Pattern identifier. |
-| `color`   | `Color`   | Pattern color.      |
-
-Empty-array behavior: `members`, `ranks`, `preferredGames`, and `banner.patterns` return empty arrays when the corresponding raw value is missing or not an array. The `achievements`, `guildExpByGameType`, and `expHistory` maps include only entries whose values are numbers.
-
-## parseStatus
-
-Parses a player's status (the `/status` endpoint) into a typed object.
-
-```ts
-export function parseStatus(session: Record<string, unknown>): PlayerStatus;
-```
-
-Always returns a `PlayerStatus` object (never `null`). The `gameType`, `mode`, and `map` fields are `null` when the raw string value is empty (`""`).
+| Field     | Notes                              |
+| --------- | ---------------------------------- |
+| `pattern` | Raw `Pattern`, pattern identifier. |
+| `color`   | Raw `Color`, pattern color.        |
 
 ### PlayerStatus
 
+The object returned by `parseStatus`.
+
 ```ts
-export interface PlayerStatus {
+interface PlayerStatus {
   readonly online: boolean;
   readonly gameType: string | null;
   readonly mode: string | null;
@@ -157,27 +165,12 @@ export interface PlayerStatus {
 }
 ```
 
-| Field      | Raw key    | Notes                                    |
-| ---------- | ---------- | ---------------------------------------- |
-| `online`   | `online`   | Whether the player is currently online.  |
-| `gameType` | `gameType` | Current game type, or `null` when empty. |
-| `mode`     | `mode`     | Current mode, or `null` when empty.      |
-| `map`      | `map`      | Current map, or `null` when empty.       |
-
-## parseRecentGames
-
-Parses a player's recent games (the `/recentgames` endpoint) into a typed object.
-
-```ts
-export function parseRecentGames(games: unknown[]): RecentGame[];
-```
-
-Returns an array of `RecentGame`. Entries that are not plain objects (non-objects, `null`, or arrays) are skipped, so the result can be an empty array when no valid entries are present.
-
 ### RecentGame
 
+The element type of the array returned by `parseRecentGames`.
+
 ```ts
-export interface RecentGame {
+interface RecentGame {
   readonly gameType: string;
   readonly mode: string | null;
   readonly map: string | null;
@@ -186,11 +179,8 @@ export interface RecentGame {
 }
 ```
 
-| Field       | Raw key    | Notes                              |
-| ----------- | ---------- | ---------------------------------- |
-| `gameType`  | `gameType` | Game type identifier.              |
-| `mode`      | `mode`     | Game mode, or `null` when empty.   |
-| `map`       | `map`      | Map name, or `null` when empty.    |
-| `startedAt` | `date`     | Start date, or `null` when absent. |
-| `endedAt`   | `ended`    | End date, or `null` when absent.   |
+| Field       | Notes                                                  |
+| ----------- | ------------------------------------------------------ |
+| `startedAt` | Raw `date`, game start timestamp as `Date`, or `null`. |
+| `endedAt`   | Raw `ended`, game end timestamp as `Date`, or `null`.  |
 

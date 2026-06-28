@@ -1,21 +1,38 @@
 # TNT Games
 
-Parser for Hypixel TNT Games statistics. Like every parser in `@breezil/hypixel-parsers`, it is strict-raw: it mirrors the raw API field-for-field and performs zero computation (no ratios, levels, or derived values).
+The TNT Games module exposes a single parser, `parseTNTGames`, which mirrors the raw `stats.TNTGames` block of the Hypixel player API field-for-field into readonly, fully-typed objects. Every value below is read straight from the raw JSON with no computation, no ratios, and no derived totals.
 
 ## parseTNTGames
 
 Parses a player's TNT Games stats (`stats.TNTGames`) into a typed object.
 
 ```ts
-export function parseTNTGames(
-  stats: Record<string, unknown>,
-): TNTGamesStats | null;
+function parseTNTGames(stats: Record<string, unknown>): TNTGamesStats | null;
 ```
 
-### Returned type
+### Null / empty behavior
+
+`parseTNTGames` returns `null` when `stats.TNTGames` is absent, is not an object, or is an array. Otherwise it returns a fully-populated `TNTGamesStats` object. Missing fields are filled in by the safe readers used throughout the module:
+
+- Missing or non-number values become `0`.
+- Missing or non-string values become `""`.
+- Boolean fields are `true` only when the raw value is exactly `true`, otherwise `false`.
+- Missing nested objects (`flags`, `privategames`, `leaderboardSettings`, `favorites`, and the hotbar maps) are treated as empty objects, so every nested block is still present and populated with the defaults above.
+- `Date | null` fields are `null` when the raw value is absent or not a positive epoch-ms number.
+- Array fields (`packages`, `favorites.deathEffect`, `mapVotes`, `tntRunTournament`) become empty arrays (`[]`) when absent, and non-string / non-matching entries are filtered out.
+
+The dynamic maps (the per-mode hotbars) and the dynamic arrays (`mapVotes`, `tntRunTournament`) contain only the entries present in the raw data, so they may be empty when no data exists.
+
+---
+
+## Returned type tree
+
+### TNTGamesStats
+
+The root object returned by `parseTNTGames`.
 
 ```ts
-export interface TNTGamesStats {
+interface TNTGamesStats {
   readonly coins: number;
   readonly wins: number;
   readonly winstreak: number;
@@ -26,12 +43,17 @@ export interface TNTGamesStats {
   readonly activeParticle: string;
   readonly activeParticleEffect: string;
   readonly activeVoidMessage: string;
+  readonly doubleJumpEffect: string;
   readonly newActiveDeathEffect: string;
   readonly newActiveParticleEffect: string;
   readonly newDoubleJumpEffect: string;
   readonly newSelectedHat: string;
   readonly selectedHat: string;
+  readonly runDoubleJumps: number;
+  readonly shopSort: string;
+  readonly shopSortEnableOwnedFirst: boolean;
   readonly packages: readonly string[];
+  readonly favorites: TNTGamesFavorites;
   readonly mapVotes: readonly TNTGamesMapVote[];
   readonly flags: TNTGamesFlags;
   readonly privateGames: TNTGamesPrivateGames;
@@ -42,44 +64,52 @@ export interface TNTGamesStats {
   readonly bowSpleef: TNTGamesBowSpleefStats;
   readonly tntTag: TNTGamesTNTTagStats;
   readonly wizards: TNTGamesWizardsStats;
+  readonly tntRunHotbar: Readonly<Record<string, string>>;
+  readonly pvpRunHotbar: Readonly<Record<string, string>>;
+  readonly bowSpleefHotbar: Readonly<Record<string, string>>;
+  readonly tntTagHotbar: Readonly<Record<string, string>>;
+  readonly wizardsHotbar: Readonly<Record<string, string>>;
 }
 ```
 
-#### Field reference
+| Field                      | Raw source                     | Notes                                                                |
+| -------------------------- | ------------------------------ | -------------------------------------------------------------------- |
+| `coins`                    | `coins` / `tokens`             | Reads `coins`, falling back to `tokens` when `coins` is `0`/absent.  |
+| `wins`                     | `wins`                         |                                                                      |
+| `winstreak`                | `winstreak`                    |                                                                      |
+| `lastTourneyAd`            | `lastTourneyAd`                | Epoch-ms timestamp as `Date`, or `null`.                             |
+| `activeArrowTrail`         | `active_arrow_trail`           |                                                                      |
+| `activeDeathEffect`        | `active_death_effect`          |                                                                      |
+| `activeDoubleJump`         | `active_double_jump`           |                                                                      |
+| `activeParticle`           | `active_particle`              |                                                                      |
+| `activeParticleEffect`     | `active_particle_effect`       |                                                                      |
+| `activeVoidMessage`        | `active_void_message`          |                                                                      |
+| `doubleJumpEffect`         | `double_jump_effect`           |                                                                      |
+| `newActiveDeathEffect`     | `new_active_death_effect`      |                                                                      |
+| `newActiveParticleEffect`  | `new_active_particle_effect`   |                                                                      |
+| `newDoubleJumpEffect`      | `new_double_jump_effect`       |                                                                      |
+| `newSelectedHat`           | `new_selected_hat`             |                                                                      |
+| `selectedHat`              | `selected_hat`                 |                                                                      |
+| `runDoubleJumps`           | `new_run_double_jumps`         |                                                                      |
+| `shopSort`                 | `shop_sort`                    |                                                                      |
+| `shopSortEnableOwnedFirst` | `shop_sort_enable_owned_first` |                                                                      |
+| `packages`                 | `packages`                     | Filtered to string entries.                                          |
+| `mapVotes`                 | `votes_*`                      | Collected from every raw key prefixed `votes_`; `map` is the suffix. |
+| `tntRunTournament`         | `wins_tourney_tnt_run_<n>`     | Collected from every raw key matching `wins_tourney_tnt_run_<n>`.    |
+| `tntRunHotbar`             | `tntrun`                       | Slot → item map, keeping only string values.                         |
+| `pvpRunHotbar`             | `pvprun`                       | Slot → item map, keeping only string values.                         |
+| `bowSpleefHotbar`          | `spleef`                       | Slot → item map, keeping only string values.                         |
+| `tntTagHotbar`             | `tnttag`                       | Slot → item map, keeping only string values.                         |
+| `wizardsHotbar`            | `wizards`                      | Slot → item map, keeping only string values.                         |
 
-| Field                     | Raw key                         | Notes                                                       |
-| ------------------------- | ------------------------------- | ----------------------------------------------------------- |
-| `coins`                   | `coins` or `tokens`             | Coin balance; falls back to `tokens` when `coins` is falsy. |
-| `wins`                    | `wins`                          | Total TNT Games wins.                                       |
-| `winstreak`               | `winstreak`                     | Current win streak.                                         |
-| `lastTourneyAd`           | `lastTourneyAd`                 | Timestamp of the last tournament advertisement, or `null`.  |
-| `activeArrowTrail`        | `active_arrow_trail`            | Active arrow trail cosmetic.                                |
-| `activeDeathEffect`       | `active_death_effect`           | Active death effect cosmetic.                               |
-| `activeDoubleJump`        | `active_double_jump`            | Active double jump cosmetic.                                |
-| `activeParticle`          | `active_particle`               | Active particle cosmetic.                                   |
-| `activeParticleEffect`    | `active_particle_effect`        | Active particle effect cosmetic.                            |
-| `activeVoidMessage`       | `active_void_message`           | Active void message cosmetic.                               |
-| `newActiveDeathEffect`    | `new_active_death_effect`       | New active death effect cosmetic.                           |
-| `newActiveParticleEffect` | `new_active_particle_effect`    | New active particle effect cosmetic.                        |
-| `newDoubleJumpEffect`     | `new_double_jump_effect`        | New double jump effect cosmetic.                            |
-| `newSelectedHat`          | `new_selected_hat`              | New selected hat cosmetic.                                  |
-| `selectedHat`             | `selected_hat`                  | Selected hat cosmetic.                                      |
-| `packages`                | `packages`                      | Owned packages.                                             |
-| `mapVotes`                | `votes_*`                       | Per-map vote counts.                                        |
-| `flags`                   | `flags`                         | Player toggle flags.                                        |
-| `privateGames`            | `privategames`                  | Private game settings.                                      |
-| `leaderboardSettings`     | `leaderboardSettings`           | Leaderboard display settings.                               |
-| `tntRun`                  | `*_tntrun`, `*_spleef`, etc.    | TNT Run mode stats.                                         |
-| `tntRunTournament`        | `wins_tourney_tnt_run_*`        | TNT Run tournament rounds.                                  |
-| `pvpRun`                  | `*_pvprun`                      | PVP Run mode stats.                                         |
-| `bowSpleef`               | `*_bowspleef`, `*_spleef`, etc. | Bow Spleef mode stats.                                      |
-| `tntTag`                  | `*_tntag`, `tag_*`              | TNT Tag mode stats.                                         |
-| `wizards`                 | `*_capture`, `*wizard*`         | Wizards mode stats.                                         |
+---
+
+## Per-mode stat types
 
 ### TNTGamesTNTRunStats
 
 ```ts
-export interface TNTGamesTNTRunStats {
+interface TNTGamesTNTRunStats {
   readonly wins: number;
   readonly deaths: number;
   readonly bestTime: number;
@@ -93,7 +123,7 @@ export interface TNTGamesTNTRunStats {
 }
 ```
 
-| Field                      | Raw key                           |
+| Field                      | Raw source                        |
 | -------------------------- | --------------------------------- |
 | `wins`                     | `wins_tntrun`                     |
 | `deaths`                   | `deaths_tntrun`                   |
@@ -108,20 +138,26 @@ export interface TNTGamesTNTRunStats {
 
 ### TNTGamesTournamentRound
 
+One entry per `wins_tourney_tnt_run_<round>` key found in the raw data.
+
 ```ts
-export interface TNTGamesTournamentRound {
+interface TNTGamesTournamentRound {
   readonly round: number;
   readonly wins: number;
   readonly deaths: number;
 }
 ```
 
-Each entry of `tntRunTournament` is collected from raw keys matching `wins_tourney_tnt_run_<round>`. The numeric `round` suffix drives `wins` (`wins_tourney_tnt_run_<round>`) and `deaths` (`deaths_tourney_tnt_run_<round>`).
+| Field    | Raw source                       |
+| -------- | -------------------------------- |
+| `round`  | The numeric `<round>` suffix.    |
+| `wins`   | `wins_tourney_tnt_run_<round>`   |
+| `deaths` | `deaths_tourney_tnt_run_<round>` |
 
 ### TNTGamesPVPRunStats
 
 ```ts
-export interface TNTGamesPVPRunStats {
+interface TNTGamesPVPRunStats {
   readonly wins: number;
   readonly kills: number;
   readonly deaths: number;
@@ -131,10 +167,11 @@ export interface TNTGamesPVPRunStats {
   readonly fortitude: number;
   readonly doubleJumps: number;
   readonly doubleJumpsLegacy: number;
+  readonly prefix: string;
 }
 ```
 
-| Field               | Raw key                          |
+| Field               | Raw source                       |
 | ------------------- | -------------------------------- |
 | `wins`              | `wins_pvprun`                    |
 | `kills`             | `kills_pvprun`                   |
@@ -145,11 +182,12 @@ export interface TNTGamesPVPRunStats {
 | `fortitude`         | `new_pvprun_fortitude`           |
 | `doubleJumps`       | `new_pvprun_double_jumps`        |
 | `doubleJumpsLegacy` | `new_pvprun_double_jumps_legacy` |
+| `prefix`            | `prefix_pvprun`                  |
 
 ### TNTGamesBowSpleefStats
 
 ```ts
-export interface TNTGamesBowSpleefStats {
+interface TNTGamesBowSpleefStats {
   readonly wins: number;
   readonly deaths: number;
   readonly tags: number;
@@ -164,34 +202,40 @@ export interface TNTGamesBowSpleefStats {
   readonly tripleShotLegacy: number;
   readonly arrowRain: number;
   readonly explosiveDash: number;
+  readonly fireFlurry: number;
+  readonly fireFlurryCapitalized: number;
   readonly arrowTrail: string;
+  readonly arrowTrailLegacy: string;
   readonly prefix: string;
 }
 ```
 
-| Field               | Raw key                          |
-| ------------------- | -------------------------------- |
-| `wins`              | `wins_bowspleef`                 |
-| `deaths`            | `deaths_bowspleef`               |
-| `tags`              | `tags_bowspleef`                 |
-| `doubleJumpTier`    | `spleef_doublejump`              |
-| `repulsorTier`      | `spleef_repulse`                 |
-| `tripleShotTier`    | `spleef_triple`                  |
-| `doubleJumps`       | `new_spleef_double_jumps`        |
-| `doubleJumpsLegacy` | `new_spleef_double_jumps_legacy` |
-| `repulsor`          | `new_spleef_repulsor`            |
-| `repulsorLegacy`    | `new_spleef_repulsor_legacy`     |
-| `tripleShot`        | `new_spleef_tripleshot`          |
-| `tripleShotLegacy`  | `new_spleef_tripleshot_legacy`   |
-| `arrowRain`         | `new_spleef_arrowrain`           |
-| `explosiveDash`     | `new_spleef_exlosive_dash`       |
-| `arrowTrail`        | `new_spleef_arrowtrail`          |
-| `prefix`            | `prefix_bowspleef`               |
+| Field                   | Raw source                                          |
+| ----------------------- | --------------------------------------------------- |
+| `wins`                  | `wins_bowspleef`                                    |
+| `deaths`                | `deaths_bowspleef`                                  |
+| `tags`                  | `tags_bowspleef`                                    |
+| `doubleJumpTier`        | `spleef_doublejump`                                 |
+| `repulsorTier`          | `spleef_repulse`                                    |
+| `tripleShotTier`        | `spleef_triple`                                     |
+| `doubleJumps`           | `new_spleef_double_jumps`                           |
+| `doubleJumpsLegacy`     | `new_spleef_double_jumps_legacy`                    |
+| `repulsor`              | `new_spleef_repulsor`                               |
+| `repulsorLegacy`        | `new_spleef_repulsor_legacy`                        |
+| `tripleShot`            | `new_spleef_tripleshot`                             |
+| `tripleShotLegacy`      | `new_spleef_tripleshot_legacy`                      |
+| `arrowRain`             | `new_spleef_arrowrain`                              |
+| `explosiveDash`         | `new_spleef_exlosive_dash` (raw key is misspelled). |
+| `fireFlurry`            | `new_spleef_fireflurry`                             |
+| `fireFlurryCapitalized` | `new_spleef_FireFlurry`                             |
+| `arrowTrail`            | `new_spleef_arrowtrail`                             |
+| `arrowTrailLegacy`      | `spleef_arrowtrail`                                 |
+| `prefix`                | `prefix_bowspleef`                                  |
 
 ### TNTGamesTNTTagStats
 
 ```ts
-export interface TNTGamesTNTTagStats {
+interface TNTGamesTNTTagStats {
   readonly wins: number;
   readonly kills: number;
   readonly deaths: number;
@@ -201,11 +245,12 @@ export interface TNTGamesTNTTagStats {
   readonly speedItUp: number;
   readonly slowItDown: number;
   readonly suit: string;
+  readonly suitLegacy: string;
   readonly prefix: string;
 }
 ```
 
-| Field             | Raw key               |
+| Field             | Raw source            |
 | ----------------- | --------------------- |
 | `wins`            | `wins_tntag`          |
 | `kills`           | `kills_tntag`         |
@@ -216,12 +261,19 @@ export interface TNTGamesTNTTagStats {
 | `speedItUp`       | `tag_speeditup`       |
 | `slowItDown`      | `tag_slowitdown`      |
 | `suit`            | `new_tag_suit`        |
+| `suitLegacy`      | `tag_suit`            |
 | `prefix`          | `prefix_tntag`        |
+
+---
+
+## Wizards
 
 ### TNTGamesWizardsStats
 
+Aggregate Wizards stats plus a typed block for each of the ten wizard classes.
+
 ```ts
-export interface TNTGamesWizardsStats {
+interface TNTGamesWizardsStats {
   readonly wins: number;
   readonly kills: number;
   readonly assists: number;
@@ -245,7 +297,7 @@ export interface TNTGamesWizardsStats {
 }
 ```
 
-| Field            | Raw key                   |
+| Field            | Raw source                |
 | ---------------- | ------------------------- |
 | `wins`           | `wins_capture`            |
 | `kills`          | `kills_capture`           |
@@ -258,14 +310,12 @@ export interface TNTGamesWizardsStats {
 | `selectedClass`  | `wizards_selected_class`  |
 | `prefix`         | `prefix_capture`          |
 
-The ten per-wizard fields each compose a set of shared base interfaces (described below), built from a wizard-specific raw key prefix.
+### TNTGamesWizardBase
 
-### Wizard composition interfaces
-
-The per-wizard interfaces are assembled by extending these shared building-block interfaces.
+The shared shape underlying every wizard class. Read with a per-class raw key prefix (e.g. `new_firewizard`, `arcane_wizard`).
 
 ```ts
-export interface TNTGamesWizardBase {
+interface TNTGamesWizardBase {
   readonly explode: number;
   readonly regen: number;
   readonly kills: number;
@@ -274,10 +324,11 @@ export interface TNTGamesWizardBase {
   readonly healing: number;
   readonly damageTaken: number;
   readonly alternateEffectsStatus: boolean;
+  readonly alternateEffects: string;
 }
 ```
 
-| Field                    | Raw key (relative to wizard prefix) |
+| Field                    | Raw source (relative to prefix)     |
 | ------------------------ | ----------------------------------- |
 | `explode`                | `<prefix>_explode`                  |
 | `regen`                  | `<prefix>_regen`                    |
@@ -287,79 +338,93 @@ export interface TNTGamesWizardBase {
 | `healing`                | `<prefix>_healing`                  |
 | `damageTaken`            | `<prefix>_damage_taken`             |
 | `alternateEffectsStatus` | `<prefix>_alternate_effects_status` |
+| `alternateEffects`       | `<prefix>_alternate_effects`        |
+
+### TNTGamesWizardPrestige
 
 ```ts
-export interface TNTGamesWizardPrestige {
+interface TNTGamesWizardPrestige {
   readonly prestigeField: string;
 }
 ```
 
-`prestigeField` maps from `<prefix>_prestige_field`.
+`prestigeField` reads `<prefix>_prestige_field`.
+
+### TNTGamesWizardLegacy
 
 ```ts
-export interface TNTGamesWizardLegacy {
+interface TNTGamesWizardLegacy {
   readonly explodeLegacy: number;
   readonly regenLegacy: number;
 }
 ```
 
-`explodeLegacy` maps from `<prefix>_explode_legacy` and `regenLegacy` from `<prefix>_regen_legacy`.
+| Field           | Raw source (relative to prefix) |
+| --------------- | ------------------------------- |
+| `explodeLegacy` | `<prefix>_explode_legacy`       |
+| `regenLegacy`   | `<prefix>_regen_legacy`         |
+
+### TNTGamesWizardTier
+
+Read with the legacy (non-`new_`) wizard key (e.g. `firewizard`).
 
 ```ts
-export interface TNTGamesWizardTier {
+interface TNTGamesWizardTier {
   readonly explodeTier: number;
   readonly regenTier: number;
+  readonly prestigeFieldLegacy: string;
 }
 ```
 
-`explodeTier` maps from `<wizard>_explode` and `regenTier` from `<wizard>_regen`, where `<wizard>` is a tier-specific raw prefix (for example `bloodwizard`).
+| Field                 | Raw source (relative to legacy key) |
+| --------------------- | ----------------------------------- |
+| `explodeTier`         | `<wizard>_explode`                  |
+| `regenTier`           | `<wizard>_regen`                    |
+| `prestigeFieldLegacy` | `<wizard>_prestige_field`           |
 
-### Per-wizard interfaces
+### Per-class wizard interfaces
+
+Each wizard class composes a subset of the base / prestige / legacy / tier shapes above. The table lists the interface, the raw key prefix used for the base / prestige / legacy parts, the legacy key used for the tier part, and the interfaces it extends.
 
 ```ts
-export interface TNTGamesAncientWizard
+interface TNTGamesAncientWizard
   extends TNTGamesWizardBase, TNTGamesWizardPrestige {}
-
-export interface TNTGamesArcaneWizard extends TNTGamesWizardBase {}
-
-export interface TNTGamesBloodWizard
+interface TNTGamesArcaneWizard extends TNTGamesWizardBase {}
+interface TNTGamesBloodWizard
   extends
     TNTGamesWizardBase,
     TNTGamesWizardPrestige,
     TNTGamesWizardLegacy,
     TNTGamesWizardTier {}
-
-export interface TNTGamesFireWizard
+interface TNTGamesFireWizard
   extends
     TNTGamesWizardBase,
     TNTGamesWizardPrestige,
     TNTGamesWizardLegacy,
     TNTGamesWizardTier {}
-
-export interface TNTGamesHydroWizard
+interface TNTGamesHydroWizard
   extends TNTGamesWizardBase, TNTGamesWizardPrestige {}
-
-export interface TNTGamesIceWizard
+interface TNTGamesIceWizard
   extends
     TNTGamesWizardBase,
     TNTGamesWizardPrestige,
     TNTGamesWizardLegacy,
     TNTGamesWizardTier {}
-
-export interface TNTGamesKineticWizard
+interface TNTGamesKineticWizard
   extends
     TNTGamesWizardBase,
     TNTGamesWizardPrestige,
     TNTGamesWizardLegacy,
     TNTGamesWizardTier {}
-
-export interface TNTGamesStormWizard
+interface TNTGamesStormWizard
   extends TNTGamesWizardBase, TNTGamesWizardPrestige {}
-
-export interface TNTGamesToxicWizard
-  extends TNTGamesWizardBase, TNTGamesWizardPrestige, TNTGamesWizardLegacy {}
-
-export interface TNTGamesWitherWizard
+interface TNTGamesToxicWizard
+  extends
+    TNTGamesWizardBase,
+    TNTGamesWizardPrestige,
+    TNTGamesWizardLegacy,
+    TNTGamesWizardTier {}
+interface TNTGamesWitherWizard
   extends
     TNTGamesWizardBase,
     TNTGamesWizardPrestige,
@@ -367,25 +432,29 @@ export interface TNTGamesWitherWizard
     TNTGamesWizardTier {}
 ```
 
-Each wizard is built from a wizard-specific base/prestige/legacy raw prefix and (when applicable) a separate tier raw prefix:
+| Wizard field | Interface               | Base/prestige/legacy prefix | Tier key        |
+| ------------ | ----------------------- | --------------------------- | --------------- |
+| `ancient`    | `TNTGamesAncientWizard` | `new_ancientwizard`         | —               |
+| `arcane`     | `TNTGamesArcaneWizard`  | `arcane_wizard`             | —               |
+| `blood`      | `TNTGamesBloodWizard`   | `new_bloodwizard`           | `bloodwizard`   |
+| `fire`       | `TNTGamesFireWizard`    | `new_firewizard`            | `firewizard`    |
+| `hydro`      | `TNTGamesHydroWizard`   | `new_hydrowizard`           | —               |
+| `ice`        | `TNTGamesIceWizard`     | `new_icewizard`             | `icewizard`     |
+| `kinetic`    | `TNTGamesKineticWizard` | `new_kineticwizard`         | `kineticwizard` |
+| `storm`      | `TNTGamesStormWizard`   | `new_stormwizard`           | —               |
+| `toxic`      | `TNTGamesToxicWizard`   | `new_toxicwizard`           | `toxicwizard`   |
+| `wither`     | `TNTGamesWitherWizard`  | `new_witherwizard`          | `witherwizard`  |
 
-| Field     | Base/prestige/legacy prefix | Tier prefix     | Extends                      |
-| --------- | --------------------------- | --------------- | ---------------------------- |
-| `ancient` | `new_ancientwizard`         | (none)          | Base, Prestige               |
-| `arcane`  | `arcane_wizard`             | (none)          | Base                         |
-| `blood`   | `new_bloodwizard`           | `bloodwizard`   | Base, Prestige, Legacy, Tier |
-| `fire`    | `new_firewizard`            | `firewizard`    | Base, Prestige, Legacy, Tier |
-| `hydro`   | `new_hydrowizard`           | (none)          | Base, Prestige               |
-| `ice`     | `new_icewizard`             | `icewizard`     | Base, Prestige, Legacy, Tier |
-| `kinetic` | `new_kineticwizard`         | `kineticwizard` | Base, Prestige, Legacy, Tier |
-| `storm`   | `new_stormwizard`           | (none)          | Base, Prestige               |
-| `toxic`   | `new_toxicwizard`           | (none)          | Base, Prestige, Legacy       |
-| `wither`  | `new_witherwizard`          | `witherwizard`  | Base, Prestige, Legacy, Tier |
+---
+
+## Settings and cosmetics
 
 ### TNTGamesFlags
 
+Read from the raw `flags` object.
+
 ```ts
-export interface TNTGamesFlags {
+interface TNTGamesFlags {
   readonly enableExplosiveDash: boolean;
   readonly giveDjFeather: boolean;
   readonly showPreGameHints: boolean;
@@ -399,9 +468,7 @@ export interface TNTGamesFlags {
 }
 ```
 
-Built from the raw `flags` object.
-
-| Field                              | Raw key                               |
+| Field                              | Raw source                            |
 | ---------------------------------- | ------------------------------------- |
 | `enableExplosiveDash`              | `enable_explosive_dash`               |
 | `giveDjFeather`                    | `give_dj_feather`                     |
@@ -416,76 +483,97 @@ Built from the raw `flags` object.
 
 ### TNTGamesPrivateGames
 
+Read from the raw `privategames` object.
+
 ```ts
-export interface TNTGamesPrivateGames {
+interface TNTGamesPrivateGames {
   readonly bowSpleefHeavyArrows: boolean;
   readonly bowSpleefQuintuple: boolean;
   readonly bowSpleefDjMultiplier: string;
+  readonly healthBuff: string;
   readonly lowGravity: boolean;
   readonly maxedPerks: boolean;
+  readonly oneHitOneKill: boolean;
   readonly pvpRunArmorType: string;
   readonly pvpRunKnockback: boolean;
   readonly pvpRunSwordType: string;
   readonly speed: string;
+  readonly tntRunHeavyFeet: boolean;
   readonly tntRunSnowballs: boolean;
   readonly tntTagDeathmatch: boolean;
   readonly tntTagNoPowerups: boolean;
+  readonly wizardsCaptureSpeed: string;
   readonly wizardsDeathPenalty: string;
   readonly wizardsManaRegen: string;
   readonly wizardsMaxClasses: boolean;
+  readonly wizardsNoRegen: boolean;
 }
 ```
 
-Built from the raw `privategames` object.
-
-| Field                   | Raw key                   |
+| Field                   | Raw source                |
 | ----------------------- | ------------------------- |
 | `bowSpleefHeavyArrows`  | `bow_spleef_heavy_arrows` |
 | `bowSpleefQuintuple`    | `bow_spleef_quintuple`    |
 | `bowSpleefDjMultiplier` | `bowspleef_dj_multiplier` |
+| `healthBuff`            | `health_buff`             |
 | `lowGravity`            | `low_gravity`             |
 | `maxedPerks`            | `maxed_perks`             |
+| `oneHitOneKill`         | `one_hit_one_kill`        |
 | `pvpRunArmorType`       | `pvp_run_armor_type`      |
 | `pvpRunKnockback`       | `pvp_run_knockback`       |
 | `pvpRunSwordType`       | `pvp_run_sword_type`      |
 | `speed`                 | `speed`                   |
+| `tntRunHeavyFeet`       | `tnt_run_heavy_feet`      |
 | `tntRunSnowballs`       | `tnt_run_snowballs`       |
 | `tntTagDeathmatch`      | `tnt_tag_deathmatch`      |
 | `tntTagNoPowerups`      | `tnt_tag_no_powerups`     |
+| `wizardsCaptureSpeed`   | `wizards_capture_speed`   |
 | `wizardsDeathPenalty`   | `wizards_death_penalty`   |
 | `wizardsManaRegen`      | `wizards_mana_regen`      |
 | `wizardsMaxClasses`     | `wizards_max_classes`     |
+| `wizardsNoRegen`        | `wizards_no_regen`        |
 
 ### TNTGamesLeaderboardSettings
 
+Read from the raw `leaderboardSettings` object.
+
 ```ts
-export interface TNTGamesLeaderboardSettings {
+interface TNTGamesLeaderboardSettings {
   readonly mode: string;
   readonly resetType: string;
 }
 ```
 
-Built from the raw `leaderboardSettings` object's `mode` and `resetType` fields.
+| Field       | Raw source  |
+| ----------- | ----------- |
+| `mode`      | `mode`      |
+| `resetType` | `resetType` |
 
 ### TNTGamesMapVote
 
+One entry per raw key prefixed `votes_`.
+
 ```ts
-export interface TNTGamesMapVote {
+interface TNTGamesMapVote {
   readonly map: string;
   readonly votes: number;
 }
 ```
 
-Each entry of `mapVotes` is collected from every raw key prefixed with `votes_`; `map` is the key with the `votes_` prefix stripped, and `votes` is the raw numeric value.
+| Field   | Raw source                             |
+| ------- | -------------------------------------- |
+| `map`   | The portion of the key after `votes_`. |
+| `votes` | The numeric value at `votes_<map>`.    |
 
-## Null and empty behavior
+### TNTGamesFavorites
 
-- `parseTNTGames` returns `null` when `stats.TNTGames` is absent, not an object, `null`, or an array.
-- `lastTourneyAd` is a `Date` or `null` when the timestamp is absent.
-- `coins` falls back to the `tokens` raw key when `coins` is falsy.
-- `packages` returns an empty array when the raw value is not an array; non-string entries are filtered out.
-- `mapVotes` returns an empty array when no `votes_` keys exist.
-- `tntRunTournament` returns an empty array when no `wins_tourney_tnt_run_*` keys exist.
-- `flags`, `privateGames`, and `leaderboardSettings` are built from an empty object when their raw value is missing, not an object, `null`, or an array, so their fields fall back to helper defaults.
-- Numeric, string, and boolean fields fall back to the defaults provided by the shared `num`, `str`, and `bool` helpers when their raw keys are missing.
+Read from the raw `favorites` object.
+
+```ts
+interface TNTGamesFavorites {
+  readonly deathEffect: readonly string[];
+}
+```
+
+`deathEffect` reads the raw `death_effect` array, keeping only string entries.
 

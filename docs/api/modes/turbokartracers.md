@@ -1,23 +1,35 @@
 # Turbo Kart Racers
 
-Parser for Hypixel Turbo Kart Racers (Gingerbread Mario Kart) statistics. It mirrors the raw `stats.GingerBread` API block field-for-field into readonly, fully-typed objects with zero computed or derived values.
+The Turbo Kart Racers module exposes a single parser, `parseTurboKartRacers`, which mirrors the raw `stats.GingerBread` block of the Hypixel player API field-for-field into readonly, fully-typed objects. Every value below is read straight from the raw JSON with no computation, no ratios, and no derived totals.
 
 ## parseTurboKartRacers
 
 Parses a player's Turbo Kart Racers stats (`stats.GingerBread`) into a typed object.
 
 ```ts
-export function parseTurboKartRacers(
+function parseTurboKartRacers(
   stats: Record<string, unknown>,
 ): TurboKartRacersStats | null;
 ```
 
-Returns `null` when the input block is empty (no keys). Otherwise it returns a fully populated `TurboKartRacersStats`.
+### Null / empty behavior
 
-### Constants and unions
+`parseTurboKartRacers` returns `null` when the passed object has no keys (an empty `stats.GingerBread` block). Otherwise it always returns a fully-populated `TurboKartRacersStats` object filled in by the safe readers used throughout the module:
+
+- Missing or non-number values become `0`.
+- Missing or non-string values become `""`.
+- Boolean fields are `true` only when the raw value is exactly `true`, otherwise `false`.
+- `packages` becomes an empty array (`[]`) when absent or not an array, keeping only string entries.
+- `lastTourneyAd` is a `Date` only when the raw value is a positive epoch-ms number, otherwise `null`.
+- `horn` falls back to `"DEFAULT"` when the raw value is not one of the known horns.
+- The dynamic maps (`monthlyPoints`, `tourneys`) contain only the keys discovered in the raw data, so they may be empty objects when no data exists.
+
+---
+
+## Constants and unions
 
 ```ts
-export const turboKartRacersHorns = [
+const turboKartRacersHorns = [
   "DEFAULT",
   "SHY",
   "ALIEN",
@@ -31,11 +43,11 @@ export const turboKartRacersHorns = [
   "JERRY",
 ] as const;
 
-export type TurboKartRacersHorn = (typeof turboKartRacersHorns)[number];
+type TurboKartRacersHorn = (typeof turboKartRacersHorns)[number];
 ```
 
 ```ts
-export const turboKartRacersMapIds = [
+const turboKartRacersMapIds = [
   "retro",
   "hypixelgp",
   "olympus",
@@ -43,15 +55,21 @@ export const turboKartRacersMapIds = [
   "canyon",
 ] as const;
 
-export type TurboKartRacersMapId = (typeof turboKartRacersMapIds)[number];
+type TurboKartRacersMapId = (typeof turboKartRacersMapIds)[number];
 ```
 
-Note: `horn` falls back to `"DEFAULT"` when the raw value is not one of the known `turboKartRacersHorns`.
+Both `turboKartRacersHorns` and `turboKartRacersMapIds` (and their derived types) are exported.
+
+---
+
+## Returned type tree
 
 ### TurboKartRacersStats
 
+The root object returned by `parseTurboKartRacers`.
+
 ```ts
-export interface TurboKartRacersStats {
+interface TurboKartRacersStats {
   readonly coins: number;
   readonly coinsPickedUp: number;
   readonly wins: number;
@@ -73,6 +91,7 @@ export interface TurboKartRacersStats {
   readonly prefixColor: string;
   readonly itemMessages: boolean;
   readonly temperatureGaugeIndicator: boolean;
+  readonly announcer: boolean;
   readonly loadout: TurboKartRacersLoadout;
   readonly maps: Readonly<
     Record<TurboKartRacersMapId, TurboKartRacersMapStats>
@@ -85,39 +104,42 @@ export interface TurboKartRacersStats {
 }
 ```
 
-| Field                       | Type                                                    | Notes                                                              |
-| --------------------------- | ------------------------------------------------------- | ------------------------------------------------------------------ |
-| `coins`                     | `number`                                                | Turbo Kart Racers coin balance                                     |
-| `coinsPickedUp`             | `number`                                                | Coins picked up across races                                       |
-| `wins`                      | `number`                                                | Total wins                                                         |
-| `completedLaps`             | `number`                                                | Laps completed                                                     |
-| `boxPickups`                | `number`                                                | Item box pickups                                                   |
-| `goldTrophies`              | `number`                                                | Gold trophies earned                                               |
-| `silverTrophies`            | `number`                                                | Silver trophies earned                                             |
-| `bronzeTrophies`            | `number`                                                | Bronze trophies earned                                             |
-| `horn`                      | `TurboKartRacersHorn`                                   | Active horn, falls back to `"DEFAULT"`                             |
-| `bananaHitsReceived`        | `number`                                                | Banana hits received                                               |
-| `bananaHitsSent`            | `number`                                                | Banana hits sent                                                   |
-| `blueTorpedoHits`           | `number`                                                | Blue torpedo hits                                                  |
-| `grandPrix`                 | `boolean`                                               | Grand Prix flag                                                    |
-| `grandPrixTokens`           | `number`                                                | Grand Prix tokens                                                  |
-| `lastTourneyAd`             | `Date \| null`                                          | Last tournament ad timestamp, `null` when absent                   |
-| `packages`                  | `readonly string[]`                                     | Owned package identifiers, empty array when absent or not an array |
-| `lobbyResourcePack`         | `boolean`                                               | Lobby resource pack toggle                                         |
-| `showWinPrefix`             | `boolean`                                               | Win prefix display toggle                                          |
-| `prefixColor`               | `string`                                                | Prefix color                                                       |
-| `itemMessages`              | `boolean`                                               | Item messages toggle                                               |
-| `temperatureGaugeIndicator` | `boolean`                                               | Temperature gauge indicator toggle                                 |
-| `loadout`                   | `TurboKartRacersLoadout`                                | Active cosmetics and parts                                         |
-| `maps`                      | `Record<TurboKartRacersMapId, TurboKartRacersMapStats>` | Per-map lifetime stats, one entry per known map id                 |
-| `periods`                   | `TurboKartRacersPeriods`                                | Rolling period stats                                               |
-| `monthlyPoints`             | `Record<string, TurboKartRacersMonthlyPoints>`          | Keyed by `month_year` (e.g. `"1_2024"`)                            |
-| `tourneys`                  | `Record<string, TurboKartRacersTourneyStats>`           | Keyed by `solo_<index>`                                            |
+| Field                       | Type                                                    | Raw source / notes                                                |
+| --------------------------- | ------------------------------------------------------- | ----------------------------------------------------------------- | ------------------------------------------------------ |
+| `coins`                     | `number`                                                | `coins`                                                           |
+| `coinsPickedUp`             | `number`                                                | `coins_picked_up`                                                 |
+| `wins`                      | `number`                                                | `wins`                                                            |
+| `completedLaps`             | `number`                                                | `laps_completed`                                                  |
+| `boxPickups`                | `number`                                                | `box_pickups`                                                     |
+| `goldTrophies`              | `number`                                                | `gold_trophy`                                                     |
+| `silverTrophies`            | `number`                                                | `silver_trophy`                                                   |
+| `bronzeTrophies`            | `number`                                                | `bronze_trophy`                                                   |
+| `horn`                      | `TurboKartRacersHorn`                                   | `horn`, falls back to `"DEFAULT"`                                 |
+| `bananaHitsReceived`        | `number`                                                | `banana_hits_received`                                            |
+| `bananaHitsSent`            | `number`                                                | `banana_hits_sent`                                                |
+| `blueTorpedoHits`           | `number`                                                | `blue_torpedo_hit`                                                |
+| `grandPrix`                 | `boolean`                                               | `grand_prix`                                                      |
+| `grandPrixTokens`           | `number`                                                | `grand_prix_tokens`                                               |
+| `lastTourneyAd`             | `Date \\                                                | null`                                                             | `lastTourneyAd` epoch-ms timestamp, `null` when absent |
+| `packages`                  | `readonly string[]`                                     | `packages`, string entries only; `[]` when absent or not an array |
+| `lobbyResourcePack`         | `boolean`                                               | `lobby_resource_pack`                                             |
+| `showWinPrefix`             | `boolean`                                               | `show_win_prefix`                                                 |
+| `prefixColor`               | `string`                                                | `prefix_color`                                                    |
+| `itemMessages`              | `boolean`                                               | `item_messages`                                                   |
+| `temperatureGaugeIndicator` | `boolean`                                               | `temperature_gauge_indicator`                                     |
+| `announcer`                 | `boolean`                                               | `announcer`                                                       |
+| `loadout`                   | `TurboKartRacersLoadout`                                | Active cosmetics and parts                                        |
+| `maps`                      | `Record<TurboKartRacersMapId, TurboKartRacersMapStats>` | Per-map lifetime stats (no prefix), one entry per known map id    |
+| `periods`                   | `TurboKartRacersPeriods`                                | Rolling period stats (no prefix)                                  |
+| `monthlyPoints`             | `Record<string, TurboKartRacersMonthlyPoints>`          | Keyed by `<month>_<year>` (e.g. `"1_2024"`)                       |
+| `tourneys`                  | `Record<string, TurboKartRacersTourneyStats>`           | Keyed by `solo_<index>`                                           |
 
 ### TurboKartRacersLoadout
 
+Active cosmetics and parts. Each field is read directly from its raw key.
+
 ```ts
-export interface TurboKartRacersLoadout {
+interface TurboKartRacersLoadout {
   readonly boosterActive: string;
   readonly engineActive: string;
   readonly frameActive: string;
@@ -131,12 +153,25 @@ export interface TurboKartRacersLoadout {
 }
 ```
 
+| Field           | Raw source       |
+| --------------- | ---------------- |
+| `boosterActive` | `booster_active` |
+| `engineActive`  | `engine_active`  |
+| `frameActive`   | `frame_active`   |
+| `helmetActive`  | `helmet_active`  |
+| `jacketActive`  | `jacket_active`  |
+| `pantsActive`   | `pants_active`   |
+| `shoesActive`   | `shoes_active`   |
+| `skinActive`    | `skin_active`    |
+| `particleTrail` | `particle_trail` |
+| `parts`         | `parts`          |
+
 ### TurboKartRacersMapStats
 
-Per-map stats. The `maps` record always contains one entry for each id in `turboKartRacersMapIds`.
+Per-map stats. The `maps` record always contains one entry for each id in `turboKartRacersMapIds`. Lifetime reads use no prefix; tourney reads use the tourney prefix.
 
 ```ts
-export interface TurboKartRacersMapStats {
+interface TurboKartRacersMapStats {
   readonly map: TurboKartRacersMapId;
   readonly plays: number;
   readonly boxPickups: number;
@@ -146,10 +181,21 @@ export interface TurboKartRacersMapStats {
 }
 ```
 
+| Field            | Raw source (no prefix) |
+| ---------------- | ---------------------- |
+| `map`            | the map id itself      |
+| `plays`          | `<map>_plays`          |
+| `boxPickups`     | `box_pickups_<map>`    |
+| `bronzeTrophies` | `bronze_trophy_<map>`  |
+| `silverTrophies` | `silver_trophy_<map>`  |
+| `goldTrophies`   | `gold_trophy_<map>`    |
+
 ### TurboKartRacersPeriods
 
+Rolling monthly/weekly period buckets.
+
 ```ts
-export interface TurboKartRacersPeriods {
+interface TurboKartRacersPeriods {
   readonly monthlyA: TurboKartRacersPeriodStats;
   readonly monthlyB: TurboKartRacersPeriodStats;
   readonly weeklyA: TurboKartRacersPeriodStats;
@@ -157,10 +203,17 @@ export interface TurboKartRacersPeriods {
 }
 ```
 
+| Field      | Period token |
+| ---------- | ------------ |
+| `monthlyA` | `monthly_a`  |
+| `monthlyB` | `monthly_b`  |
+| `weeklyA`  | `weekly_a`   |
+| `weeklyB`  | `weekly_b`   |
+
 ### TurboKartRacersPeriodStats
 
 ```ts
-export interface TurboKartRacersPeriodStats {
+interface TurboKartRacersPeriodStats {
   readonly boxPickups: number;
   readonly bronzeTrophies: number;
   readonly silverTrophies: number;
@@ -168,12 +221,19 @@ export interface TurboKartRacersPeriodStats {
 }
 ```
 
+| Field            | Raw source (no prefix)   |
+| ---------------- | ------------------------ |
+| `boxPickups`     | `box_pickups_<period>`   |
+| `bronzeTrophies` | `bronze_trophy_<period>` |
+| `silverTrophies` | `silver_trophy_<period>` |
+| `goldTrophies`   | `gold_trophy_<period>`   |
+
 ### TurboKartRacersMonthlyPoints
 
-Keyed by month identifier (`<month>_<year>`) derived from `GingerBread_tkr_points__<month>_points` / `_position` keys.
+One entry per month found in the raw data. Keys are `<month>_<year>`, derived from `GingerBread_tkr_points__<month>_points` / `GingerBread_tkr_points__<month>_position`.
 
 ```ts
-export interface TurboKartRacersMonthlyPoints {
+interface TurboKartRacersMonthlyPoints {
   readonly points: number;
   readonly position: number;
 }
@@ -181,10 +241,10 @@ export interface TurboKartRacersMonthlyPoints {
 
 ### TurboKartRacersTourneyStats
 
-Keyed by `solo_<index>`, derived from `tourney_gingerbread_solo_<index>_*` keys.
+One entry per tourney found in the raw data, keyed by `solo_<index>` and read with the prefix `tourney_gingerbread_solo_<index>_`. The nested `maps` and `periods` are read with the same prefix.
 
 ```ts
-export interface TurboKartRacersTourneyStats {
+interface TurboKartRacersTourneyStats {
   readonly wins: number;
   readonly lapsCompleted: number;
   readonly coinsPickedUp: number;
@@ -201,4 +261,17 @@ export interface TurboKartRacersTourneyStats {
   readonly periods: TurboKartRacersPeriods;
 }
 ```
+
+| Field                | Raw source (with prefix)       |
+| -------------------- | ------------------------------ |
+| `wins`               | `<prefix>wins`                 |
+| `lapsCompleted`      | `<prefix>laps_completed`       |
+| `coinsPickedUp`      | `<prefix>coins_picked_up`      |
+| `boxPickups`         | `<prefix>box_pickups`          |
+| `goldTrophies`       | `<prefix>gold_trophy`          |
+| `silverTrophies`     | `<prefix>silver_trophy`        |
+| `bronzeTrophies`     | `<prefix>bronze_trophy`        |
+| `bananaHitsReceived` | `<prefix>banana_hits_received` |
+| `bananaHitsSent`     | `<prefix>banana_hits_sent`     |
+| `blueTorpedoHits`    | `<prefix>blue_torpedo_hit`     |
 

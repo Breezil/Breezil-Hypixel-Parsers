@@ -5,6 +5,7 @@ export interface GameDefinition {
   readonly name: string;
   readonly databaseName: string;
   readonly legacy: boolean;
+  readonly retired: boolean;
   readonly modeNames: Readonly<Record<string, string>>;
 }
 
@@ -31,6 +32,7 @@ export function parseGames(
       name: str(game, "name"),
       databaseName: str(game, "databaseName"),
       legacy: bool(game, "legacy"),
+      retired: bool(game, "retired"),
       modeNames: parseModeNames(game),
     };
   }

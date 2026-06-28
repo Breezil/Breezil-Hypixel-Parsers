@@ -1,17 +1,25 @@
 import { parseMurderMystery, type MurderMysteryStats } from "./murdermystery";
 import { parseCopsAndCrims, type CopsAndCrimsStats } from "./copsandcrims";
+import { parseSkyBlockStats, type SkyBlockStats } from "./skyblockstats";
 import { parseBuildBattle, type BuildBattleStats } from "./buildbattle";
 import { parseSmashHeroes, type SmashHeroesStats } from "./smashheroes";
+import { parseHousingStats, type HousingStats } from "./housingstats";
 import { parseArenaBrawl, type ArenaBrawlStats } from "./arenabrawl";
 import { parseQuakecraft, type QuakecraftStats } from "./quakecraft";
+import { parseTrueCombat, type TrueCombatStats } from "./truecombat";
+import { parseMainLobby, type MainLobbyStats } from "./mainlobby";
 import { parsePaintball, type PaintballStats } from "./paintball";
+import { parseWoolGames, type WoolGamesStats } from "./woolgames";
 import { parseMegaWalls, type MegaWallsStats } from "./megawalls";
+import { parseSpeedUHC, type SpeedUHCStats } from "./speeduhc";
+import { parseSkyClash, type SkyClashStats } from "./skyclash";
 import { parseVampireZ, type VampireZStats } from "./vampirez";
 import { parseTNTGames, type TNTGamesStats } from "./tntgames";
 import { parseWarlords, type WarlordsStats } from "./warlords";
 import { parseBedWars, type BedWarsStats } from "./bedwars";
 import { parseSkyWars, type SkyWarsStats } from "./skywars";
 import { parseArcade, type ArcadeStats } from "./arcade";
+import { parseLegacy, type LegacyStats } from "./legacy";
 import { parseDuels, type DuelsStats } from "./duels";
 import { parseWalls, type WallsStats } from "./walls";
 import { parseBlitz, type BlitzStats } from "./blitz";
@@ -44,6 +52,14 @@ export interface HypixelPlayerStats {
   readonly warlords: WarlordsStats | null;
   readonly turboKartRacers: TurboKartRacersStats | null;
   readonly arenaBrawl: ArenaBrawlStats | null;
+  readonly woolGames: WoolGamesStats | null;
+  readonly speedUHC: SpeedUHCStats | null;
+  readonly skyClash: SkyClashStats | null;
+  readonly trueCombat: TrueCombatStats | null;
+  readonly legacy: LegacyStats | null;
+  readonly mainLobby: MainLobbyStats | null;
+  readonly housing: HousingStats | null;
+  readonly skyblock: SkyBlockStats | null;
 }
 
 export interface HypixelPlayerAchievementsTotem {
@@ -62,6 +78,7 @@ export interface HypixelPlayerAchievements {
   readonly tiered: Record<string, number>;
   readonly oneTime: readonly string[];
   readonly oneTimeMenuSort: string;
+  readonly tieredMenuSort: string;
   readonly sync: Record<string, number>;
   readonly totem: HypixelPlayerAchievementsTotem;
 }
@@ -125,6 +142,8 @@ export interface HypixelPlayerCosmetics {
   readonly gadget: string;
   readonly selectedParticlePack: string;
   readonly clickEffect: string;
+  readonly cloak: string;
+  readonly emote: string;
   readonly disguise: string;
   readonly transformation: string;
   readonly wardrobe: string;
@@ -185,6 +204,7 @@ export interface HypixelPlayerSocialMedia {
   readonly twitter: string;
   readonly instagram: string;
   readonly tiktok: string;
+  readonly prompt: boolean;
   readonly verification: Record<string, string>;
 }
 
@@ -197,6 +217,8 @@ export interface HypixelPlayerHousing {
   readonly allowedBlocks: readonly string[];
   readonly packages: readonly string[];
   readonly tutorialStage: string;
+  readonly playlist: string;
+  readonly plotSize: string;
   readonly firstHouseJoinAt: Date | null;
   readonly visibilityDisabled: boolean;
   readonly selectedChannels: readonly string[];
@@ -230,7 +252,35 @@ export interface HypixelPlayerAdventRewards {
   readonly days: readonly HypixelPlayerAdventDay[];
 }
 
+export interface HypixelPlayerSeasonalEvent {
+  readonly year: string;
+  readonly experience: number;
+  readonly adventRewards: Record<string, number>;
+  readonly presents: Record<string, boolean>;
+  readonly completedHolidayQuests: number;
+  readonly bedWarsWinsAchievement: number;
+  readonly duelsWinsAchievement: number;
+  readonly skyBlockAlchemistIntro: boolean;
+  readonly eggs: Record<string, boolean>;
+  readonly mainLobbyEgghunt: Record<string, boolean>;
+  readonly candyHuntBaskets: readonly number[];
+  readonly bingoPinned: string;
+  readonly bingo: Record<string, Record<string, number>>;
+}
+
+export interface HypixelPlayerSeasonalEventShopSorting {
+  readonly currentSort: string;
+  readonly ownedFirst: boolean;
+}
+
 export interface HypixelPlayerSeasonal {
+  readonly silver: number;
+  readonly eventShopSorting: HypixelPlayerSeasonalEventShopSorting;
+  readonly christmas: readonly HypixelPlayerSeasonalEvent[];
+  readonly easter: readonly HypixelPlayerSeasonalEvent[];
+  readonly halloween: readonly HypixelPlayerSeasonalEvent[];
+  readonly summer: readonly HypixelPlayerSeasonalEvent[];
+  readonly anniversary: readonly HypixelPlayerSeasonalEvent[];
   readonly christmasAdventRewards: readonly HypixelPlayerAdventRewards[];
 }
 
@@ -248,16 +298,7 @@ export interface HypixelPlayerLeveling {
   readonly claimedRewards: readonly number[];
 }
 
-export interface HypixelPlayerCooldowns {
-  readonly specialty: Record<string, boolean>;
-  readonly holiday2016: Record<string, boolean>;
-  readonly halloween2016: Record<string, boolean>;
-  readonly halloween2019: Record<string, boolean>;
-  readonly halloween2021: Record<string, boolean>;
-  readonly christmas2019: Record<string, boolean>;
-  readonly easter2021: Record<string, boolean>;
-  readonly summer2020: Record<string, boolean>;
-}
+export type HypixelPlayerCooldowns = Record<string, Record<string, boolean>>;
 
 export interface HypixelPlayerTournamentEntry {
   readonly key: string;
@@ -293,6 +334,19 @@ export interface HypixelPlayerFlashingSale {
   readonly lastPopupAt: Date | null;
 }
 
+export interface HypixelPlayerCachedSuperstarMonths {
+  readonly value: number;
+  readonly lastUpdatedAt: Date | null;
+}
+
+export interface HypixelPlayerCachedData {
+  readonly superstarMonths: HypixelPlayerCachedSuperstarMonths;
+}
+
+export interface HypixelPlayerSkyBlockExtra {
+  readonly ozanneCoins: number;
+}
+
 export interface HypixelPlayer {
   readonly id: string;
   readonly uuid: string;
@@ -323,6 +377,12 @@ export interface HypixelPlayer {
   readonly santaQuestStarted: boolean;
   readonly autoSpawnPet: boolean;
   readonly battlePassGlowStatus: boolean;
+  readonly clock: boolean;
+  readonly main2017Tutorial: boolean;
+  readonly mostRecentGameType: string;
+  readonly mapVotes: Record<string, Record<string, number>>;
+  readonly cachedData: HypixelPlayerCachedData;
+  readonly skyblockExtra: HypixelPlayerSkyBlockExtra;
   readonly chatEnabled: boolean;
   readonly disableTipMessages: boolean;
   readonly disabledProjectileTrails: boolean;
@@ -334,12 +394,14 @@ export interface HypixelPlayer {
   readonly lastLoginAt: Date | null;
   readonly lastLogoutAt: Date | null;
   readonly claimedCenturyCakeAt: Date | null;
+  readonly claimedCenturyCake200At: Date | null;
   readonly claimedYear143CakeAt: Date | null;
   readonly claimedPotatoWarCrownAt: Date | null;
   readonly claimedPotatoBasketAt: Date | null;
   readonly claimedPotatoTalismanAt: Date | null;
   readonly claimedSoloBank: Record<string, number>;
   readonly skyBlockFreeCookieAt: Date | null;
+  readonly lastMapVoteAt: Date | null;
   readonly flashingSale: HypixelPlayerFlashingSale;
   readonly challenges: Record<string, Record<string, number>>;
   readonly compassStats: Record<string, Record<string, number>>;
@@ -476,6 +538,7 @@ function parseAchievements(
     tiered: numberMap(obj(raw, "achievements")),
     oneTime: stringList(raw.achievementsOneTime),
     oneTimeMenuSort: str(raw, "onetime_achievement_menu_sort"),
+    tieredMenuSort: str(raw, "tiered_achievement_menu_sort"),
     sync: numberMap(obj(raw, "achievementSync")),
     totem: {
       canCustomize: bool(totem, "canCustomize"),
@@ -555,6 +618,8 @@ function parseCosmetics(raw: Record<string, unknown>): HypixelPlayerCosmetics {
     gadget: str(raw, "gadget"),
     selectedParticlePack: str(raw, "particlePack"),
     clickEffect: str(raw, "currentClickEffect"),
+    cloak: str(raw, "currentCloak"),
+    emote: str(raw, "currentEmote"),
     disguise: str(raw, "disguise"),
     transformation: str(raw, "transformation"),
     wardrobe: str(raw, "wardrobe"),
@@ -630,6 +695,7 @@ function parseSocialMedia(
     twitter: str(links, "TWITTER"),
     instagram: str(links, "INSTAGRAM"),
     tiktok: str(links, "TIKTOK"),
+    prompt: bool(socialMedia, "prompt"),
     verification,
   };
 }
@@ -639,6 +705,8 @@ function parseHousing(source: Record<string, unknown>): HypixelPlayerHousing {
     allowedBlocks: stringList(source.allowedBlocks),
     packages: stringList(source.packages),
     tutorialStage: str(source, "tutorialStep"),
+    playlist: str(source, "playlist"),
+    plotSize: str(source, "plotSize"),
     firstHouseJoinAt: date(source, "firstHouseJoinMs"),
     visibilityDisabled: bool(source, "visibilityDisabled"),
     selectedChannels: stringList(source.selectedChannels_v3),
@@ -706,9 +774,79 @@ function parseAdventRewards(
     });
 }
 
-function parseSeasonal(raw: Record<string, unknown>): HypixelPlayerSeasonal {
-  const christmas = obj(obj(raw, "seasonal"), "christmas");
+function parseSeasonalBingo(
+  source: Record<string, unknown>,
+): Record<string, Record<string, number>> {
+  const result: Record<string, Record<string, number>> = {};
+  for (const key of Object.keys(source)) {
+    const value = source[key];
+    if (typeof value === "object" && value !== null && !Array.isArray(value)) {
+      result[key] = numberMap(
+        obj(value as Record<string, unknown>, "objectives"),
+      );
+    }
+  }
+  return result;
+}
+
+function parseSeasonalEvent(
+  year: string,
+  source: Record<string, unknown>,
+): HypixelPlayerSeasonalEvent {
+  const bingo = obj(source, "bingo");
+  const mainLobbyEgghunt: Record<string, boolean> = {};
+  for (const key of Object.keys(source)) {
+    if (
+      key.startsWith("mainlobby_egghunt_") &&
+      typeof source[key] === "boolean"
+    ) {
+      mainLobbyEgghunt[key.replace("mainlobby_egghunt_", "")] = source[
+        key
+      ] as boolean;
+    }
+  }
   return {
+    year,
+    experience: num(obj(source, "levelling"), "experience"),
+    adventRewards: numberMap(obj(source, "adventRewards")),
+    presents: boolMap(obj(source, "presents")),
+    completedHolidayQuests: num(source, "completed_holiday_quests"),
+    bedWarsWinsAchievement: num(source, "bedWarsWinsAchievement"),
+    duelsWinsAchievement: num(source, "duelsWinsAchievement"),
+    skyBlockAlchemistIntro: bool(source, "skyBlockAlchemistIntro"),
+    eggs: boolMap(obj(obj(source, "egghunt"), "eggs")),
+    mainLobbyEgghunt,
+    candyHuntBaskets: numberList(obj(source, "candyhunt").baskets),
+    bingoPinned: str(bingo, "pinned"),
+    bingo: parseSeasonalBingo(bingo),
+  };
+}
+
+function parseSeasonalEvents(
+  seasonal: Record<string, unknown>,
+  key: string,
+): readonly HypixelPlayerSeasonalEvent[] {
+  const source = obj(seasonal, key);
+  return Object.keys(source).map((year) =>
+    parseSeasonalEvent(year, obj(source, year)),
+  );
+}
+
+function parseSeasonal(raw: Record<string, unknown>): HypixelPlayerSeasonal {
+  const seasonal = obj(raw, "seasonal");
+  const christmas = obj(seasonal, "christmas");
+  const eventShop = obj(seasonal, "eventShopSorting");
+  return {
+    silver: num(seasonal, "silver"),
+    eventShopSorting: {
+      currentSort: str(eventShop, "currentSort"),
+      ownedFirst: bool(eventShop, "ownedFirst"),
+    },
+    christmas: parseSeasonalEvents(seasonal, "christmas"),
+    easter: parseSeasonalEvents(seasonal, "easter"),
+    halloween: parseSeasonalEvents(seasonal, "halloween"),
+    summer: parseSeasonalEvents(seasonal, "summer"),
+    anniversary: parseSeasonalEvents(seasonal, "anniversary"),
     christmasAdventRewards: Object.keys(christmas).map((year) => ({
       year: Number(year) || 0,
       days: adventDays(obj(obj(christmas, year), "adventRewards")),
@@ -794,6 +932,20 @@ function parseXmas2019(raw: Record<string, unknown>): Record<string, boolean> {
   return result;
 }
 
+const COOLDOWN_KEY = /Cooldowns2?$/;
+
+function parseCooldowns(
+  raw: Record<string, unknown>,
+): Record<string, Record<string, boolean>> {
+  const result: Record<string, Record<string, boolean>> = {};
+  for (const key of Object.keys(raw)) {
+    if (COOLDOWN_KEY.test(key)) {
+      result[key.replace(COOLDOWN_KEY, "")] = boolMap(obj(raw, key));
+    }
+  }
+  return result;
+}
+
 function parseStats(
   stats: Record<string, unknown>,
   achievements: Record<string, unknown>,
@@ -811,18 +963,26 @@ function parseStats(
     murderMystery: parseMurderMystery(stats),
     tntGames: parseTNTGames(stats),
     pit: parsePit(stats),
-    megaWalls: parseMegaWalls(stats),
+    megaWalls: parseMegaWalls(obj(stats, "Walls3")),
     blitz: parseBlitz(stats),
     uhc: parseUHC(stats),
-    smashHeroes: parseSmashHeroes(stats),
+    smashHeroes: parseSmashHeroes(obj(stats, "SuperSmash")),
     copsAndCrims: parseCopsAndCrims(stats),
     paintball: parsePaintball(stats),
     quakecraft: parseQuakecraft(stats),
     vampireZ: parseVampireZ(stats),
     walls: parseWalls(stats),
-    warlords: parseWarlords(stats),
-    turboKartRacers: parseTurboKartRacers(stats),
+    warlords: parseWarlords(obj(stats, "Battleground")),
+    turboKartRacers: parseTurboKartRacers(obj(stats, "GingerBread")),
     arenaBrawl: parseArenaBrawl(stats),
+    woolGames: parseWoolGames(obj(stats, "WoolGames")),
+    speedUHC: parseSpeedUHC(obj(stats, "SpeedUHC")),
+    skyClash: parseSkyClash(obj(stats, "SkyClash")),
+    trueCombat: parseTrueCombat(obj(stats, "TrueCombat")),
+    legacy: parseLegacy(obj(stats, "Legacy")),
+    mainLobby: parseMainLobby(obj(stats, "MainLobby")),
+    housing: parseHousingStats(obj(stats, "Housing")),
+    skyblock: parseSkyBlockStats(obj(stats, "SkyBlock")),
   };
 }
 
@@ -858,6 +1018,22 @@ export function parsePlayer(raw: Record<string, unknown>): HypixelPlayer {
     santaQuestStarted: bool(raw, "SANTA_QUEST_STARTED"),
     autoSpawnPet: bool(raw, "auto_spawn_pet"),
     battlePassGlowStatus: bool(raw, "battlePassGlowStatus"),
+    clock: bool(raw, "clock"),
+    main2017Tutorial: bool(raw, "main2017Tutorial"),
+    mostRecentGameType: str(raw, "mostRecentGameType"),
+    mapVotes: nestedNumberMap(obj(raw, "map_votes")),
+    cachedData: {
+      superstarMonths: {
+        value: num(obj(obj(raw, "cachedData"), "superstarMonths"), "value"),
+        lastUpdatedAt: date(
+          obj(obj(raw, "cachedData"), "superstarMonths"),
+          "lastUpdated",
+        ),
+      },
+    },
+    skyblockExtra: {
+      ozanneCoins: num(obj(raw, "skyblock_extra"), "ozanne_coins"),
+    },
     chatEnabled: bool(raw, "chat"),
     disableTipMessages: bool(raw, "disableTipMessages"),
     disabledProjectileTrails: bool(raw, "disabledProjectileTrails"),
@@ -869,12 +1045,14 @@ export function parsePlayer(raw: Record<string, unknown>): HypixelPlayer {
     lastLoginAt: date(raw, "lastLogin"),
     lastLogoutAt: date(raw, "lastLogout"),
     claimedCenturyCakeAt: date(raw, "claimed_century_cake"),
+    claimedCenturyCake200At: date(raw, "claimed_century_cake200"),
     claimedYear143CakeAt: date(raw, "claimed_year143_cake"),
     claimedPotatoWarCrownAt: date(raw, "claim_potato_war_crown"),
     claimedPotatoBasketAt: date(raw, "claimed_potato_basket"),
     claimedPotatoTalismanAt: date(raw, "claimed_potato_talisman"),
     claimedSoloBank: parseSoloBank(raw),
     skyBlockFreeCookieAt: date(raw, "skyblock_free_cookie"),
+    lastMapVoteAt: date(raw, "lastMapVote"),
     flashingSale: {
       clicks: num(raw, "flashingSaleClicks"),
       opens: num(raw, "flashingSaleOpens"),
@@ -892,16 +1070,7 @@ export function parsePlayer(raw: Record<string, unknown>): HypixelPlayer {
       npcProgress2020: num(raw, "anniversaryNPCProgress2020"),
       npcVisited2020: numberList(raw.anniversaryNPCVisited2020),
     },
-    cooldowns: {
-      specialty: boolMap(obj(raw, "specialtyCooldowns")),
-      holiday2016: boolMap(obj(raw, "holiday2016Cooldowns")),
-      halloween2016: boolMap(obj(raw, "halloween2016Cooldowns")),
-      halloween2019: boolMap(obj(raw, "halloween2019Cooldowns")),
-      halloween2021: boolMap(obj(raw, "halloween2021Cooldowns")),
-      christmas2019: boolMap(obj(raw, "christmas2019Cooldowns")),
-      easter2021: boolMap(obj(raw, "easter2021Cooldowns2")),
-      summer2020: boolMap(obj(raw, "summer2020Cooldowns")),
-    },
+    cooldowns: parseCooldowns(raw),
     xmas2019: parseXmas2019(raw),
     achievements: parseAchievements(raw),
     cosmetics: parseCosmetics(raw),

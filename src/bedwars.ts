@@ -820,6 +820,7 @@ export interface BedWarsStats {
   readonly activeCosmetics: BedWarsActiveCosmetics;
   readonly boxes: BedWarsBoxes;
   readonly favorites: BedWarsFavorites;
+  readonly favoriteCosmetics: Readonly<Record<string, readonly string[]>>;
   readonly figurines: BedWarsFigurines;
   readonly boon: BedWarsBoon;
   readonly dreamfeast: BedWarsDreamfeast;
@@ -987,6 +988,17 @@ function parseFavorites(raw: Record<string, unknown>): BedWarsFavorites {
     shopSlots: commaList(raw, "favourites_1"),
     shopSlotsSecondary: commaList(raw, "favourites_2"),
   };
+}
+
+function parseFavoriteCosmetics(
+  raw: Record<string, unknown>,
+): Readonly<Record<string, readonly string[]>> {
+  const favorites = obj(raw, "favorites");
+  const result = {} as Record<string, readonly string[]>;
+  for (const category of Object.keys(favorites)) {
+    result[category] = stringArray(favorites, category);
+  }
+  return result;
 }
 
 function parseFigurines(raw: Record<string, unknown>): BedWarsFigurines {
@@ -1285,6 +1297,7 @@ export function parseBedWars(
     activeCosmetics: parseActiveCosmetics(bw),
     boxes: readCounts(bw, BEDWARS_BOXES),
     favorites: parseFavorites(bw),
+    favoriteCosmetics: parseFavoriteCosmetics(bw),
     figurines: parseFigurines(bw),
     boon: readFlags(obj(bw, "boon"), BEDWARS_BOON),
     dreamfeast: readFlags(obj(bw, "dreamfeast"), BEDWARS_DREAMFEAST),

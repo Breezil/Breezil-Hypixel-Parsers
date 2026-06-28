@@ -193,6 +193,24 @@ type ArcadeZombiesEnemyName = keyof typeof ZOMBIES_ENEMY_KEYS;
 
 export interface ArcadeOptions {
   readonly showTutorialBook: boolean;
+  readonly showTips: boolean;
+  readonly showTipHologram: boolean;
+  readonly showAllKillfeed: boolean;
+  readonly showOwnWoolPickedUp: boolean;
+  readonly showOwnWoolDropped: boolean;
+  readonly showEnemyWoolPickedUp: boolean;
+  readonly showEnemyWoolDropped: boolean;
+}
+
+export interface ArcadePrivateGamesSettings {
+  readonly healthBuff: string;
+  readonly naturalRegeneration: string;
+  readonly noFallDamage: boolean;
+  readonly permanentPvp: boolean;
+  readonly powerUpAbundance: string;
+  readonly mapsForEasy: string;
+  readonly mapsForMedium: string;
+  readonly mapsForHard: string;
 }
 
 export interface ArcadeBlockingDeadStats {
@@ -208,6 +226,7 @@ export interface ArcadeDragonWarsStats {
 
 export interface ArcadePixelPaintersStats {
   readonly wins: number;
+  readonly paintedBlocks: number;
 }
 
 export interface ArcadePixelPartyModeStats {
@@ -223,6 +242,7 @@ export interface ArcadePixelPartyStats {
   readonly highestRound: number;
   readonly powerUpsCollected: number;
   readonly roundsCompleted: number;
+  readonly language: string;
   readonly normal: ArcadePixelPartyModeStats;
   readonly hyper: ArcadePixelPartyModeStats;
 }
@@ -249,6 +269,7 @@ export interface ArcadeLeaderboardSettings {
 export interface ArcadeDttSettings {
   readonly dropdown: boolean;
   readonly filter: boolean;
+  readonly music: boolean;
 }
 
 export interface ArcadeDropperMap {
@@ -337,6 +358,7 @@ export interface ArcadeHideAndSeekStats {
   readonly partyPooperSeekerWins: number;
   readonly propHuntHiderWins: number;
   readonly propHuntSeekerWins: number;
+  readonly showQueueBook: boolean;
 }
 
 export interface ArcadeHoleInTheWallStats {
@@ -345,6 +367,7 @@ export interface ArcadeHoleInTheWallStats {
   readonly color: string;
   readonly recordFinish: number;
   readonly recordQualification: number;
+  readonly perfectTitle: boolean;
 }
 
 export interface ArcadeHypixelSportsStats {
@@ -428,6 +451,7 @@ export interface ArcadeHypixelSaysStats {
   readonly rounds: number;
   readonly roundWins: number;
   readonly topScore: number;
+  readonly song: boolean;
 }
 
 export interface ArcadeSoccerStats {
@@ -435,12 +459,43 @@ export interface ArcadeSoccerStats {
   readonly goals: number;
   readonly kicks: number;
   readonly powerKicks: number;
+  readonly fbGoals: number;
+  readonly fbKicks: number;
+  readonly fbPowerKicks: number;
 }
 
 export interface ArcadeThrowOutStats {
   readonly wins: number;
   readonly kills: number;
   readonly deaths: number;
+  readonly disguise: string;
+}
+
+export interface ArcadeGrindStats {
+  readonly wins: number;
+  readonly kills: number;
+  readonly deaths: number;
+}
+
+export interface ArcadeSplatoonStats {
+  readonly wins: number;
+  readonly kills: number;
+  readonly deaths: number;
+}
+
+export interface ArcadeVolleyballStats {
+  readonly wins: number;
+  readonly kills: number;
+  readonly deaths: number;
+}
+
+export interface ArcadeSpaceRaidersStats {
+  readonly wins: number;
+  readonly kills: number;
+}
+
+export interface ArcadePumpkinSpleefStats {
+  readonly wins: number;
 }
 
 export interface ArcadeWoolHuntStats {
@@ -558,6 +613,7 @@ export interface ArcadeStats {
   readonly meleeWeapon: string;
   readonly language: string;
   readonly shopSort: string;
+  readonly shopSortEnableOwnedFirst: boolean;
   readonly activeMovementTrail: string;
   readonly activeProjectileTrail: string;
   readonly activeVictoryDance: string;
@@ -567,6 +623,7 @@ export interface ArcadeStats {
   readonly packages: readonly string[];
   readonly leaderboardSettings: ArcadeLeaderboardSettings;
   readonly options: ArcadeOptions;
+  readonly privateGames: ArcadePrivateGamesSettings;
   readonly blockingDead: ArcadeBlockingDeadStats;
   readonly dragonWars: ArcadeDragonWarsStats;
   readonly pixelPainters: ArcadePixelPaintersStats;
@@ -594,6 +651,11 @@ export interface ArcadeStats {
   readonly hypixelSays: ArcadeHypixelSaysStats;
   readonly soccer: ArcadeSoccerStats;
   readonly throwOut: ArcadeThrowOutStats;
+  readonly grind: ArcadeGrindStats;
+  readonly splatoon: ArcadeSplatoonStats;
+  readonly volleyball: ArcadeVolleyballStats;
+  readonly spaceRaiders: ArcadeSpaceRaidersStats;
+  readonly pumpkinSpleef: ArcadePumpkinSpleefStats;
   readonly woolHunt: ArcadeWoolHuntStats;
   readonly zombies: ArcadeZombiesStats;
 }
@@ -767,6 +829,7 @@ export function parseArcade(
   const pixelParty = obj(arcade, "pixel_party");
   const pixelPartyColorblind = obj(arcade, "pixelparty");
   const leaderboardSettings = obj(arcade, "leaderboardSettings");
+  const privateGames = obj(arcade, "privategames");
   const disastersStats = obj(obj(arcade, "disasters"), "stats");
 
   return {
@@ -795,6 +858,7 @@ export function parseArcade(
     meleeWeapon: str(arcade, "melee_weapon"),
     language: str(arcade, "language"),
     shopSort: str(arcade, "shop_sort"),
+    shopSortEnableOwnedFirst: bool(arcade, "shop_sort_enable_owned_first"),
     activeMovementTrail: str(arcade, "active_movement_trail"),
     activeProjectileTrail: str(arcade, "active_projectile_trail"),
     activeVictoryDance: str(arcade, "active_victory_dance"),
@@ -808,6 +872,26 @@ export function parseArcade(
     },
     options: {
       showTutorialBook: optionOn(arcade, "option_show_tutorial_book"),
+      showTips: optionOn(arcade, "option_show_tips"),
+      showTipHologram: optionOn(arcade, "option_show_tip_hologram"),
+      showAllKillfeed: optionOn(arcade, "option_show_all_killfeed"),
+      showOwnWoolPickedUp: optionOn(arcade, "option_show_own_wool_picked_up"),
+      showOwnWoolDropped: optionOn(arcade, "option_show_own_wool_dropped"),
+      showEnemyWoolPickedUp: optionOn(
+        arcade,
+        "option_show_enemy_wool_picked_up",
+      ),
+      showEnemyWoolDropped: optionOn(arcade, "option_show_enemy_wool_dropped"),
+    },
+    privateGames: {
+      healthBuff: str(privateGames, "health_buff"),
+      naturalRegeneration: str(privateGames, "natural_regeneration"),
+      noFallDamage: bool(privateGames, "no_fall_damage"),
+      permanentPvp: bool(privateGames, "permanent_pvp"),
+      powerUpAbundance: str(privateGames, "power_up_abundance"),
+      mapsForEasy: str(privateGames, "maps_for_easy"),
+      mapsForMedium: str(privateGames, "maps_for_medium"),
+      mapsForHard: str(privateGames, "maps_for_hard"),
     },
     blockingDead: {
       wins: num(arcade, "wins_dayone"),
@@ -820,6 +904,7 @@ export function parseArcade(
     },
     pixelPainters: {
       wins: num(arcade, "wins_draw_their_thing"),
+      paintedBlocks: num(arcade, "paintedBlocks"),
     },
     pixelParty: {
       gamesPlayed: num(pixelParty, "games_played"),
@@ -827,6 +912,7 @@ export function parseArcade(
       highestRound: num(pixelParty, "highest_round"),
       powerUpsCollected: num(pixelParty, "power_ups_collected"),
       roundsCompleted: num(pixelParty, "rounds_completed"),
+      language: str(arcade, "pp_language"),
       normal: parsePixelPartyMode(pixelParty, "_normal"),
       hyper: parsePixelPartyMode(pixelParty, "_hyper"),
     },
@@ -847,6 +933,7 @@ export function parseArcade(
     dtt: {
       dropdown: bool(arcade, "dtt_dropdown"),
       filter: bool(arcade, "dtt_filter"),
+      music: bool(arcade, "dtt_music"),
     },
     dropper: {
       wins: num(dropper, "wins"),
@@ -949,6 +1036,7 @@ export function parseArcade(
       ),
       propHuntHiderWins: num(arcade, "prop_hunt_hider_wins_hide_and_seek"),
       propHuntSeekerWins: num(arcade, "prop_hunt_seeker_wins_hide_and_seek"),
+      showQueueBook: bool(arcade, "hideandseek_showqueuebook"),
     },
     holeInTheWall: {
       wins: num(arcade, "wins_hole_in_the_wall"),
@@ -956,6 +1044,7 @@ export function parseArcade(
       color: str(arcade, "hitw_color"),
       recordFinish: num(arcade, "hitw_record_f"),
       recordQualification: num(arcade, "hitw_record_q"),
+      perfectTitle: bool(arcade, "hitwPerfectTitle"),
     },
     hypixelSports: {
       wins: num(arcade, "wins_hypixel_sports"),
@@ -1038,17 +1127,44 @@ export function parseArcade(
       rounds: num(arcade, "rounds_simon_says"),
       roundWins: num(arcade, "round_wins_simon_says"),
       topScore: num(arcade, "top_score_simon_says"),
+      song: bool(arcade, "simon_song"),
     },
     soccer: {
       wins: num(arcade, "wins_soccer"),
       goals: num(arcade, "goals_soccer"),
       kicks: num(arcade, "kicks_soccer"),
       powerKicks: num(arcade, "powerkicks_soccer"),
+      fbGoals: num(arcade, "fb_goals"),
+      fbKicks: num(arcade, "fb_kicks"),
+      fbPowerKicks: num(arcade, "fb_powerkicks"),
     },
     throwOut: {
       wins: num(arcade, "wins_throw_out"),
       kills: num(arcade, "kills_throw_out"),
       deaths: num(arcade, "deaths_throw_out"),
+      disguise: str(arcade, "throwout_disguise"),
+    },
+    grind: {
+      wins: num(arcade, "wins_grind"),
+      kills: num(arcade, "kills_grind"),
+      deaths: num(arcade, "deaths_grind"),
+    },
+    splatoon: {
+      wins: num(arcade, "wins_splatoon"),
+      kills: num(arcade, "kills_splatoon"),
+      deaths: num(arcade, "deaths_splatoon"),
+    },
+    volleyball: {
+      wins: num(arcade, "wins_volleyball"),
+      kills: num(arcade, "kills_volleyball"),
+      deaths: num(arcade, "deaths_volleyball"),
+    },
+    spaceRaiders: {
+      wins: num(arcade, "wins_spaceraiders"),
+      kills: num(arcade, "kills_spaceraiders"),
+    },
+    pumpkinSpleef: {
+      wins: num(arcade, "wins_pspleef"),
     },
     woolHunt: {
       participatedWins: num(arcade, "woolhunt_participated_wins"),

@@ -31,6 +31,7 @@ export interface DuelsGamemodeStats {
   readonly goldenApplesEaten: number;
   readonly goldenHeadsEaten: number;
   readonly healPotsUsed: number;
+  readonly potionsUsed: number;
   readonly damageDealt: number;
   readonly coins: number;
   readonly coinsGained: number;
@@ -63,6 +64,8 @@ export interface DuelsComboStats extends DuelsModeStats {
 export interface DuelsParkourStats extends DuelsModeStats {
   readonly checkpointsReached: number;
   readonly personalBest: number;
+  readonly modeCheckpointsReached: number;
+  readonly modePersonalBest: number;
   readonly playersHidden: boolean;
 }
 
@@ -122,6 +125,7 @@ export interface DuelsMegaWallsStats extends DuelsModeGroupStats {
   readonly selectedClass: string;
   readonly abilities: DuelsMegaWallsAbilities;
   readonly classAbilities: Readonly<Record<string, number>>;
+  readonly modeAbilities: Readonly<Record<string, number>>;
   readonly solo: DuelsGamemodeStats;
   readonly doubles: DuelsGamemodeStats;
   readonly fours: DuelsGamemodeStats;
@@ -155,12 +159,18 @@ export interface DuelsArenaStats extends DuelsGamemodeStats {
   readonly modePreferences: DuelsArenaModePreferences;
 }
 
+export interface DuelsQuakeSoloStats extends DuelsGamemodeStats {
+  readonly headshots: number;
+  readonly shotHits: number;
+  readonly shotsTaken: number;
+}
+
 export interface DuelsQuakeStats extends DuelsWinstreakGroupStats {
   readonly gunType: string;
   readonly headshots: number;
   readonly shotHits: number;
   readonly shotsTaken: number;
-  readonly solo: DuelsGamemodeStats;
+  readonly solo: DuelsQuakeSoloStats;
 }
 
 export interface DuelsBridgeStats extends DuelsModeGroupStats {
@@ -204,6 +214,7 @@ export interface DuelsBedwarsStats extends DuelsWinstreakGroupStats {
   readonly bedsLost: number;
   readonly gamesPlayed: number;
   readonly itemsPurchased: number;
+  readonly itemsPurchasedAlt: number;
   readonly permanentItemsPurchased: number;
   readonly killsByCause: DuelsBedwarsCauseBreakdown;
   readonly deathsByCause: DuelsBedwarsCauseBreakdown;
@@ -273,6 +284,9 @@ export interface DuelsPrivateGames {
   readonly giveRegen: string;
   readonly lowGravity: boolean;
   readonly blockProtection: boolean;
+  readonly changeWeapon: string;
+  readonly roundTime: string;
+  readonly healthBuff: string;
 }
 
 export interface DuelsMigrationFlags {
@@ -312,6 +326,7 @@ export interface DuelsStats {
   readonly goldenApplesEaten: number;
   readonly goldenHeadsEaten: number;
   readonly healPotsUsed: number;
+  readonly potionsUsed: number;
   readonly damageDealt: number;
   readonly longestCombo: number;
   readonly captures: number;
@@ -533,6 +548,7 @@ function parseGamemode(
     goldenApplesEaten: num(data, `${mode}_golden_apples_eaten`),
     goldenHeadsEaten: num(data, `${mode}_golden_heads_eaten`),
     healPotsUsed: num(data, `${mode}_heal_pots_used`),
+    potionsUsed: num(data, `${mode}_potions_used`),
     damageDealt: num(data, `${mode}_damage_dealt`),
     coins: num(data, `${mode}_coins`),
     coinsGained: num(data, `${mode}_coins_gained`),
@@ -651,7 +667,37 @@ function parseMegaWallsClassAbilities(
     if (NON_CLASS_ABILITY_PREFIXES.some((prefix) => key.startsWith(prefix))) {
       continue;
     }
-    if (MEGA_WALLS_ABILITY_BASES.some((base) => key.endsWith(`_${base}`))) {
+    if (
+      MEGA_WALLS_ABILITY_BASES.some(
+        (base) => key.endsWith(`_${base}`) || key.endsWith(`_${base}_standard`),
+      )
+    ) {
+      result[key] = value;
+    }
+  }
+  return result;
+}
+
+const MEGA_WALLS_MODE_ABILITY_PREFIXES = ["mw_duel_", "mw_doubles_"];
+
+function parseMegaWallsModeAbilities(
+  data: Record<string, unknown>,
+): Record<string, number> {
+  const result: Record<string, number> = {};
+  for (const [key, value] of Object.entries(data)) {
+    if (typeof value !== "number") {
+      continue;
+    }
+    if (
+      !MEGA_WALLS_MODE_ABILITY_PREFIXES.some((prefix) => key.startsWith(prefix))
+    ) {
+      continue;
+    }
+    if (
+      MEGA_WALLS_ABILITY_BASES.some(
+        (base) => key.endsWith(`_${base}`) || key.endsWith(`_${base}_standard`),
+      )
+    ) {
       result[key] = value;
     }
   }
@@ -804,6 +850,9 @@ function parsePrivateGames(data: Record<string, unknown>): DuelsPrivateGames {
     giveRegen: str(games, "duels_give_regen"),
     lowGravity: bool(games, "low_gravity"),
     blockProtection: bool(games, "duels_block_protection"),
+    changeWeapon: str(games, "duels_change_weapon"),
+    roundTime: str(games, "duels_round_time"),
+    healthBuff: str(games, "health_buff"),
   };
 }
 
@@ -856,6 +905,7 @@ export function parseDuels(stats: Record<string, unknown>): DuelsStats | null {
     goldenApplesEaten: num(data, "golden_apples_eaten"),
     goldenHeadsEaten: num(data, "golden_heads_eaten"),
     healPotsUsed: num(data, "heal_pots_used"),
+    potionsUsed: num(data, "potions_used"),
     damageDealt: num(data, "damage_dealt"),
     longestCombo: num(data, "longest_combo"),
     captures: num(data, "captures"),
@@ -941,6 +991,7 @@ export function parseDuels(stats: Record<string, unknown>): DuelsStats | null {
       selectedClass: str(data, "mw_duels_class"),
       abilities: parseMegaWallsAbilities(data),
       classAbilities: parseMegaWallsClassAbilities(data),
+      modeAbilities: parseMegaWallsModeAbilities(data),
       solo: parseGamemode(data, "mw_duel"),
       doubles: parseGamemode(data, "mw_doubles"),
       fours: parseGamemode(data, "mw_four"),
@@ -984,6 +1035,7 @@ export function parseDuels(stats: Record<string, unknown>): DuelsStats | null {
       bedsLost: num(data, "beds_lost_bedwars"),
       gamesPlayed: num(data, "games_played_bedwars"),
       itemsPurchased: num(data, "items_purchased_bedwars"),
+      itemsPurchasedAlt: num(data, "_items_purchased_bedwars"),
       permanentItemsPurchased: num(data, "permanent_items_purchased_bedwars"),
       killsByCause: parseBedwarsCause(data, "kills"),
       deathsByCause: parseBedwarsCause(data, "deaths"),
@@ -1035,7 +1087,12 @@ export function parseDuels(stats: Record<string, unknown>): DuelsStats | null {
       headshots: num(data, "quake_headshots"),
       shotHits: num(data, "quake_shot_hits"),
       shotsTaken: num(data, "quake_shots_taken"),
-      solo: parseGamemode(data, "quake_duel"),
+      solo: {
+        ...parseGamemode(data, "quake_duel"),
+        headshots: num(data, "quake_duel_quake_headshots"),
+        shotHits: num(data, "quake_duel_quake_shot_hits"),
+        shotsTaken: num(data, "quake_duel_quake_shots_taken"),
+      },
     },
     sumo: parseMode(data, "sumo_duel", "sumo"),
     boxing: parseMode(data, "boxing_duel", "boxing"),
@@ -1043,6 +1100,11 @@ export function parseDuels(stats: Record<string, unknown>): DuelsStats | null {
       ...parseMode(data, "parkour_eight", "parkour"),
       checkpointsReached: num(data, "parkour_checkpoints_reached"),
       personalBest: num(data, "parkour_personal_best"),
+      modeCheckpointsReached: num(
+        data,
+        "parkour_eight_parkour_checkpoints_reached",
+      ),
+      modePersonalBest: num(data, "parkour_eight_parkour_personal_best"),
       playersHidden: bool(data, "parkour_players_hidden"),
     },
     arena: {

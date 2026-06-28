@@ -1,23 +1,35 @@
 # SkyBlock Items
 
-The `@breezil/hypixel-parsers` library converts the raw Hypixel SkyBlock item registry JSON into readonly, fully-typed objects. This page documents the `parseSkyBlockItems` parser and the complete type tree it returns, mirroring the raw API field-for-field with zero computed or derived values.
+The items module (`skyblock-items.ts`) converts the raw Hypixel SkyBlock item registry JSON into readonly, fully-typed objects. It exposes a single parser, `parseSkyBlockItems`, which mirrors the raw API field-for-field with no computation or derived values. Missing numbers become `0`, missing strings become `""`, and boolean fields are `true` only when the raw value is exactly `true`.
 
 ## parseSkyBlockItems
 
-Parses the SkyBlock item registry (`/resources/skyblock/items`) into a typed object, mapping each raw item entry to a `SkyBlockItem`.
+Parses the SkyBlock item registry (`/resources/skyblock/items`) into an array of `SkyBlockItem`.
 
 ```ts
-export function parseSkyBlockItems(items: unknown[]): SkyBlockItem[];
+function parseSkyBlockItems(items: unknown[]): SkyBlockItem[];
 ```
 
-Iterates the provided array and pushes one `SkyBlockItem` per entry. Entries that are not plain objects (non-objects, `null`, or arrays) are skipped. An empty input array yields an empty result array; the function never returns `null`.
+### Null / empty behavior
+
+- Entries that are not non-array objects are skipped.
+- Object-array fields (`salvages`, `gemstoneSlots`, `requirements`, `catacombsRequirements`, `components`, `recipes`, and each cost list) return `[]` when their raw field is missing or not an array; non-object entries are filtered out.
+- `upgradeCosts` is a nested array: each inner entry is `[]` when not an array, with non-object elements filtered out.
+- Map fields (`stats`, `enchantments`, `tieredStats`, `museumData.parent`, `museumData.armorSetDonationXp`, `recipe.ingredientSymbols`, `itemSpecific`) keep only entries whose values are of the expected type.
+- `durability` is the raw `durability` when it is a string or number, otherwise `0`.
+- `hasUuid` is the raw `has_uuid` when it is a string, otherwise the boolean `has_uuid === true`.
+- Always returns an array (possibly empty), never `null`.
+
+---
+
+## Returned type tree
 
 ### SkyBlockItem
 
-The top-level item type returned for each registry entry.
+An entry returned by `parseSkyBlockItems`.
 
 ```ts
-export interface SkyBlockItem {
+interface SkyBlockItem {
   readonly id: string;
   readonly name: string;
   readonly material: string;
@@ -89,58 +101,94 @@ export interface SkyBlockItem {
 }
 ```
 
-Notable fields:
-
-| Field                             | Type                                              | Notes                                                                                                 |
-| --------------------------------- | ------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
-| `id`                              | `string`                                          | The item identifier (raw `id`).                                                                       |
-| `name`                            | `string`                                          | The item display name.                                                                                |
-| `material`                        | `string`                                          | The underlying material.                                                                              |
-| `durability`                      | `number \| string`                                | Preserves the raw value's type; defaults to `0` when neither a string nor a number.                   |
-| `itemModel`                       | `string`                                          | Raw `item_model`.                                                                                     |
-| `categoryDisplay`                 | `string`                                          | Raw `category_display`.                                                                               |
-| `tier` / `rarity`                 | `string`                                          | Raw `tier` and `rarity`.                                                                              |
-| `npcSellPrice`                    | `number`                                          | Raw `npc_sell_price`.                                                                                 |
-| `motesSellPrice`                  | `number`                                          | Raw `motes_sell_price`.                                                                               |
-| `salvages`                        | `ReadonlyArray<SkyBlockItemCost>`                 | Raw `salvages`.                                                                                       |
-| `salvage`                         | `SkyBlockItemCost`                                | Raw `salvage`.                                                                                        |
-| `raritySalvageable`               | `boolean`                                         | Raw `rarity_salvageable`.                                                                             |
-| `salvageableFromRecipe`           | `boolean`                                         | Raw `salvageable_from_recipe`.                                                                        |
-| `stats`                           | `Readonly<Record<string, number>>`                | Numeric values only, from raw `stats`.                                                                |
-| `tieredStats`                     | `Readonly<Record<string, ReadonlyArray<number>>>` | Arrays of numbers from raw `tiered_stats`.                                                            |
-| `miningFortune`                   | `number`                                          | Raw `MINING_FORTUNE`.                                                                                 |
-| `hasUuid`                         | `boolean \| string`                               | String when the raw `has_uuid` is a string; otherwise `true` only if the raw value is exactly `true`. |
-| `requirements`                    | `ReadonlyArray<SkyBlockItemRequirement>`          | Raw `requirements`.                                                                                   |
-| `catacombsRequirements`           | `ReadonlyArray<SkyBlockItemRequirement>`          | Raw `catacombs_requirements`.                                                                         |
-| `generatorTier`                   | `number`                                          | Raw `generator_tier`.                                                                                 |
-| `itemSpecific`                    | `Readonly<Record<string, SkyBlockJsonValue>>`     | Raw `item_specific` map, untyped JSON values.                                                         |
-| `upgradeCosts`                    | `ReadonlyArray<ReadonlyArray<SkyBlockItemCost>>`  | Nested array of cost arrays, from raw `upgrade_costs`.                                                |
-| `gearScore`                       | `number`                                          | Raw `gear_score`.                                                                                     |
-| `dungeonItemConversionCost`       | `SkyBlockItemCost`                                | Raw `dungeon_item_conversion_cost`.                                                                   |
-| `enchantments`                    | `Readonly<Record<string, number>>`                | Numeric values only, from raw `enchantments`.                                                         |
-| `hideFromViewRecipeCommand`       | `boolean`                                         | Raw `hide_from_viewrecipe_command`.                                                                   |
-| `abilityDamageScaling`            | `number`                                          | Raw `ability_damage_scaling`.                                                                         |
-| `isUpgradeableWithoutSoulbinding` | `boolean`                                         | Raw `is_upgradeable_without_soulbinding`.                                                             |
+| Field                             | Raw key / notes                                 |
+| --------------------------------- | ----------------------------------------------- |
+| `id`                              | `id`.                                           |
+| `name`                            | `name`.                                         |
+| `material`                        | `material`.                                     |
+| `durability`                      | `durability` (string or number; otherwise `0`). |
+| `skin`                            | `skin`.                                         |
+| `itemModel`                       | `item_model`.                                   |
+| `category`                        | `category`.                                     |
+| `categoryDisplay`                 | `category_display`.                             |
+| `tier`                            | `tier`.                                         |
+| `rarity`                          | `rarity`.                                       |
+| `npcSellPrice`                    | `npc_sell_price`.                               |
+| `motesSellPrice`                  | `motes_sell_price`.                             |
+| `salvages`                        | `salvages`.                                     |
+| `salvage`                         | `salvage`.                                      |
+| `raritySalvageable`               | `rarity_salvageable`.                           |
+| `salvageableFromRecipe`           | `salvageable_from_recipe`.                      |
+| `stats`                           | `stats` (number map).                           |
+| `tieredStats`                     | `tiered_stats` (number-array map).              |
+| `miningFortune`                   | `MINING_FORTUNE`.                               |
+| `unstackable`                     | `unstackable`.                                  |
+| `museumData`                      | `museum_data`.                                  |
+| `museum`                          | `museum`.                                       |
+| `color`                           | `color`.                                        |
+| `soulbound`                       | `soulbound`.                                    |
+| `hasUuid`                         | `has_uuid` (string when string, else boolean).  |
+| `gemstoneSlots`                   | `gemstone_slots`.                               |
+| `glowing`                         | `glowing`.                                      |
+| `canAuction`                      | `can_auction`.                                  |
+| `canTrade`                        | `can_trade`.                                    |
+| `requirements`                    | `requirements`.                                 |
+| `catacombsRequirements`           | `catacombs_requirements`.                       |
+| `canPlace`                        | `can_place`.                                    |
+| `generator`                       | `generator`.                                    |
+| `generatorTier`                   | `generator_tier`.                               |
+| `furniture`                       | `furniture`.                                    |
+| `components`                      | `components`.                                   |
+| `itemSpecific`                    | `item_specific` (arbitrary JSON map).           |
+| `description`                     | `description`.                                  |
+| `upgradeCosts`                    | `upgrade_costs` (array of cost arrays).         |
+| `gearScore`                       | `gear_score`.                                   |
+| `dungeonItem`                     | `dungeon_item`.                                 |
+| `dungeonItemConversionCost`       | `dungeon_item_conversion_cost`.                 |
+| `canHaveAttributes`               | `can_have_attributes`.                          |
+| `canHaveBooster`                  | `can_have_booster`.                             |
+| `canRecombobulate`                | `can_recombobulate`.                            |
+| `cannotReforge`                   | `cannot_reforge`.                               |
+| `forceWipeRecomb`                 | `force_wipe_recomb`.                            |
+| `enchantments`                    | `enchantments` (number map).                    |
+| `riftTransferrable`               | `rift_transferrable`.                           |
+| `loseMotesValueOnTransfer`        | `lose_motes_value_on_transfer`.                 |
+| `origin`                          | `origin`.                                       |
+| `editioned`                       | `editioned`.                                    |
+| `hideFromApi`                     | `hide_from_api`.                                |
+| `doubleTapToDrop`                 | `double_tap_to_drop`.                           |
+| `hideFromViewRecipeCommand`       | `hide_from_viewrecipe_command`.                 |
+| `swordType`                       | `sword_type`.                                   |
+| `abilityDamageScaling`            | `ability_damage_scaling`.                       |
+| `crystal`                         | `crystal`.                                      |
+| `canBurnInFurnace`                | `can_burn_in_furnace`.                          |
+| `serializable`                    | `serializable`.                                 |
+| `canInteract`                     | `can_interact`.                                 |
+| `canInteractRightClick`           | `can_interact_right_click`.                     |
+| `canInteractEntity`               | `can_interact_entity`.                          |
+| `privateIsland`                   | `private_island`.                               |
+| `canHavePowerScroll`              | `can_have_power_scroll`.                        |
+| `isUpgradeableWithoutSoulbinding` | `is_upgradeable_without_soulbinding`.           |
+| `recipes`                         | `recipes`.                                      |
+| `prestige`                        | `prestige`.                                     |
 
 ### SkyBlockItemSkin
 
-The item's texture skin, mapped from the raw `skin` object.
+Read from the raw `skin` object.
 
 ```ts
-export interface SkyBlockItemSkin {
+interface SkyBlockItemSkin {
   readonly value: string;
   readonly signature: string;
 }
 ```
 
-Fields are populated from raw `value` and `signature`; default to empty strings when absent.
-
 ### SkyBlockItemCost
 
-A single cost entry, used for salvages, gemstone slot costs, upgrade costs, prestige costs, and conversion costs.
+A single cost entry. Used by `salvages`, `salvage`, `gemstoneSlots[].costs`, `upgradeCosts`, `dungeonItemConversionCost`, and `prestige.costs`.
 
 ```ts
-export interface SkyBlockItemCost {
+interface SkyBlockItemCost {
   readonly type: string;
   readonly essenceType: string;
   readonly itemId: string;
@@ -149,14 +197,20 @@ export interface SkyBlockItemCost {
 }
 ```
 
-Mapped from raw `type`, `essence_type`, `item_id`, `coins`, and `amount`.
+| Field         | Raw key        |
+| ------------- | -------------- |
+| `type`        | `type`         |
+| `essenceType` | `essence_type` |
+| `itemId`      | `item_id`      |
+| `coins`       | `coins`        |
+| `amount`      | `amount`       |
 
 ### SkyBlockItemMuseumData
 
-Museum metadata for the item, mapped from the raw `museum_data` object.
+Read from the raw `museum_data` object.
 
 ```ts
-export interface SkyBlockItemMuseumData {
+interface SkyBlockItemMuseumData {
   readonly donationXp: number;
   readonly category: string;
   readonly parent: Readonly<Record<string, string>>;
@@ -166,35 +220,39 @@ export interface SkyBlockItemMuseumData {
 }
 ```
 
-| Field                | Raw source              | Notes                   |
-| -------------------- | ----------------------- | ----------------------- |
-| `donationXp`         | `donation_xp`           | Number.                 |
-| `category`           | `category`              | String.                 |
-| `parent`             | `parent`                | String-valued map only. |
-| `mappedItemIds`      | `mapped_item_ids`       | String entries only.    |
-| `gameStage`          | `game_stage`            | String.                 |
-| `armorSetDonationXp` | `armor_set_donation_xp` | Number-valued map only. |
+| Field                | Raw key                              |
+| -------------------- | ------------------------------------ |
+| `donationXp`         | `donation_xp`                        |
+| `category`           | `category`                           |
+| `parent`             | `parent` (string map)                |
+| `mappedItemIds`      | `mapped_item_ids`                    |
+| `gameStage`          | `game_stage`                         |
+| `armorSetDonationXp` | `armor_set_donation_xp` (number map) |
 
 ### SkyBlockItemGemstoneSlot
 
-A gemstone slot on the item, from entries of the raw `gemstone_slots` array.
+An entry of `gemstoneSlots`.
 
 ```ts
-export interface SkyBlockItemGemstoneSlot {
+interface SkyBlockItemGemstoneSlot {
   readonly slotType: string;
   readonly costs: ReadonlyArray<SkyBlockItemCost>;
   readonly requirements: ReadonlyArray<SkyBlockItemGemstoneSlotRequirement>;
 }
 ```
 
-Mapped from raw `slot_type`, `costs`, and `requirements`.
+| Field          | Raw key        |
+| -------------- | -------------- |
+| `slotType`     | `slot_type`    |
+| `costs`        | `costs`        |
+| `requirements` | `requirements` |
 
 ### SkyBlockItemGemstoneSlotRequirement
 
-A requirement entry for a gemstone slot, from a slot's raw `requirements` array.
+An entry of `SkyBlockItemGemstoneSlot.requirements`.
 
 ```ts
-export interface SkyBlockItemGemstoneSlotRequirement {
+interface SkyBlockItemGemstoneSlotRequirement {
   readonly type: string;
   readonly dataKey: string;
   readonly value: string;
@@ -202,14 +260,19 @@ export interface SkyBlockItemGemstoneSlotRequirement {
 }
 ```
 
-Mapped from raw `type`, `data_key`, `value`, and `operator`.
+| Field      | Raw key    |
+| ---------- | ---------- |
+| `type`     | `type`     |
+| `dataKey`  | `data_key` |
+| `value`    | `value`    |
+| `operator` | `operator` |
 
 ### SkyBlockItemRequirement
 
-An item requirement, used by both `requirements` and `catacombsRequirements`. This type is recursive: its own `requirements` field holds nested requirements.
+Used by `requirements` and `catacombsRequirements`. Self-referential: a requirement may contain nested `requirements`.
 
 ```ts
-export interface SkyBlockItemRequirement {
+interface SkyBlockItemRequirement {
   readonly type: string;
   readonly skill: string;
   readonly level: number;
@@ -233,35 +296,35 @@ export interface SkyBlockItemRequirement {
 }
 ```
 
-| Field            | Raw source              |
-| ---------------- | ----------------------- |
-| `type`           | `type`                  |
-| `skill`          | `skill`                 |
-| `level`          | `level`                 |
-| `tier`           | `tier`                  |
-| `dungeonType`    | `dungeon_type`          |
-| `slayerBossType` | `slayer_boss_type`      |
-| `collection`     | `collection`            |
-| `reward`         | `reward`                |
-| `faction`        | `faction`               |
-| `reputation`     | `reputation`            |
-| `trophyType`     | `trophy_type`           |
-| `rabbit`         | `rabbit`                |
-| `mode`           | `mode`                  |
-| `kuudraTier`     | `kuudra_tier`           |
-| `profileType`    | `profile_type`          |
-| `amount`         | `amount`                |
-| `loreIndex`      | `lore_index`            |
-| `minimumAge`     | `minimum_age`           |
-| `minimumAgeUnit` | `minimum_age_unit`      |
-| `requirements`   | `requirements` (nested) |
+| Field            | Raw key               |
+| ---------------- | --------------------- |
+| `type`           | `type`                |
+| `skill`          | `skill`               |
+| `level`          | `level`               |
+| `tier`           | `tier`                |
+| `dungeonType`    | `dungeon_type`        |
+| `slayerBossType` | `slayer_boss_type`    |
+| `collection`     | `collection`          |
+| `reward`         | `reward`              |
+| `faction`        | `faction`             |
+| `reputation`     | `reputation`          |
+| `trophyType`     | `trophy_type`         |
+| `rabbit`         | `rabbit`              |
+| `mode`           | `mode`                |
+| `kuudraTier`     | `kuudra_tier`         |
+| `profileType`    | `profile_type`        |
+| `amount`         | `amount`              |
+| `loreIndex`      | `lore_index`          |
+| `minimumAge`     | `minimum_age`         |
+| `minimumAgeUnit` | `minimum_age_unit`    |
+| `requirements`   | nested `requirements` |
 
 ### SkyBlockItemComponent
 
-A component descriptor from entries of the raw `components` array.
+An entry of `components`.
 
 ```ts
-export interface SkyBlockItemComponent {
+interface SkyBlockItemComponent {
   readonly type: string;
   readonly showItemsFirst: ReadonlyArray<string>;
   readonly showItemsLast: ReadonlyArray<string>;
@@ -272,7 +335,7 @@ export interface SkyBlockItemComponent {
 }
 ```
 
-| Field                 | Raw source               |
+| Field                 | Raw key                  |
 | --------------------- | ------------------------ |
 | `type`                | `type`                   |
 | `showItemsFirst`      | `show_items_first`       |
@@ -284,10 +347,10 @@ export interface SkyBlockItemComponent {
 
 ### SkyBlockItemRecipe
 
-A crafting recipe from entries of the raw `recipes` array.
+An entry of `recipes`.
 
 ```ts
-export interface SkyBlockItemRecipe {
+interface SkyBlockItemRecipe {
   readonly output: SkyBlockItemRecipeOutput;
   readonly ingredientSymbols: Readonly<Record<string, string>>;
   readonly matrix: ReadonlyArray<string>;
@@ -295,39 +358,45 @@ export interface SkyBlockItemRecipe {
 }
 ```
 
-Mapped from raw `output`, `ingredient_symbols` (string-valued map), `matrix` (string entries only), and `allow_quick_crafting`.
+| Field                | Raw key                           |
+| -------------------- | --------------------------------- |
+| `output`             | `output`                          |
+| `ingredientSymbols`  | `ingredient_symbols` (string map) |
+| `matrix`             | `matrix`                          |
+| `allowQuickCrafting` | `allow_quick_crafting`            |
 
 ### SkyBlockItemRecipeOutput
 
-The output item of a recipe, from the recipe's raw `output` object.
-
 ```ts
-export interface SkyBlockItemRecipeOutput {
+interface SkyBlockItemRecipeOutput {
   readonly itemId: string;
 }
 ```
 
-Mapped from raw `item_id`.
+`itemId` is read from the raw `output.item_id`.
 
 ### SkyBlockItemPrestige
 
-The item's prestige progression, mapped from the raw `prestige` object.
+Read from the raw `prestige` object.
 
 ```ts
-export interface SkyBlockItemPrestige {
+interface SkyBlockItemPrestige {
   readonly itemId: string;
   readonly costs: ReadonlyArray<SkyBlockItemCost>;
 }
 ```
 
-Mapped from raw `item_id` and `costs`.
+| Field    | Raw key   |
+| -------- | --------- |
+| `itemId` | `item_id` |
+| `costs`  | `costs`   |
 
 ### SkyBlockJsonValue
 
-A recursive union representing arbitrary JSON used by the `itemSpecific` map, where the raw shape is open-ended.
+The recursive JSON value type used by `SkyBlockItem.itemSpecific`, preserving arbitrary per-item data verbatim.
 
 ```ts
-export type SkyBlockJsonValue =
+type SkyBlockJsonValue =
   | string
   | number
   | boolean

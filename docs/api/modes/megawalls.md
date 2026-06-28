@@ -1,25 +1,67 @@
 # Mega Walls
 
-The Mega Walls parser turns the raw `stats.Walls3` block from the Hypixel Player API into a readonly, fully-typed object. Like the rest of `@breezil/hypixel-parsers`, it is strict-raw: every field mirrors the API one-for-one with zero derived, computed, or aggregated values.
+The Mega Walls module exposes a single parser, `parseMegaWalls`, which mirrors the raw `stats.Walls3` block of the Hypixel player API field-for-field into readonly, fully-typed objects. Every value below is read straight from the raw JSON with no computation, no ratios, and no derived totals.
 
 ## parseMegaWalls
 
 Parses a player's Mega Walls stats (`stats.Walls3`) into a typed object.
 
 ```ts
-export function parseMegaWalls(
-  stats: Record<string, unknown>,
-): MegaWallsStats | null;
+function parseMegaWalls(stats: Record<string, unknown>): MegaWallsStats | null;
 ```
 
-Returns `null` when `stats` is not an object (`null` or non-object input). Otherwise it always returns a fully populated `MegaWallsStats`; missing fields fall back to their zero/empty values (`0` for numbers, `""` for strings, `false` for booleans, `{}`/`[]` for records and arrays).
+### Null / empty behavior
+
+`parseMegaWalls` returns `null` when the input is not an object, is `null`, or has no keys. Otherwise it returns a fully-populated `MegaWallsStats` object. Missing fields are filled in by the safe readers used throughout the module:
+
+- Missing or non-number values become `0`.
+- Missing or non-string values become `""`.
+- Boolean fields are `true` only when the raw value is exactly `true`, otherwise `false`.
+- Missing nested objects (`leaderboardSettings`, `settings`, `privategames`, each class's `prestige_tag`) are treated as empty objects, so every nested block is still present and populated with the defaults above.
+- Array fields (`packages`, `cakes_found_by_name`) become empty arrays (`[]`) when absent, and non-string entries are filtered out.
+
+The dynamic maps are built only from the keys present in the raw data, so they may be empty:
+
+- `votes` collects every `votes_<map>` key with a numeric value.
+- `chosenSkins` collects every `chosen_skin_<class>` key with a string value.
+- `effects` collects every `<name>_effect` key with a string value.
+- `byClass`, `classes`, `legacyClassStats`, `kitInventories`, and the per-period `finalKillsByClassTier*` maps are keyed by class / kit names discovered in the raw data.
+
+Class names for the per-class maps are discovered from the seed list of 15 known classes (`MegaWallsClass`) plus any class name found as a suffix on the raw `kills_`, `kills_new_`, `deaths_`, `deaths_new_`, `wins_`, `losses_`, `assists_`, `finalKills_`, and `finalAssists_` keys (matching `null` or a capitalized identifier). Kit blocks are always built for the full fixed kit list, so `kits` always contains all 27 kit keys.
+
+---
+
+## Returned type tree
+
+### MegaWallsClass
+
+The union of the 15 seed class names used to discover per-class maps.
+
+```ts
+type MegaWallsClass =
+  | "Arcanist"
+  | "Blaze"
+  | "Creeper"
+  | "Dreadlord"
+  | "Enderman"
+  | "Golem"
+  | "Herobrine"
+  | "Hunter"
+  | "Pigman"
+  | "Pirate"
+  | "Shaman"
+  | "Skeleton"
+  | "Spider"
+  | "Squid"
+  | "Zombie";
+```
 
 ### MegaWallsStats
 
 The root object returned by `parseMegaWalls`.
 
 ```ts
-export interface MegaWallsStats {
+interface MegaWallsStats {
   readonly coins: number;
   readonly witherCoins: number;
   readonly classPoints: number;
@@ -44,25 +86,39 @@ export interface MegaWallsStats {
   readonly blood: boolean;
   readonly mutationsVisibility: boolean;
   readonly gvgDecide: boolean;
+  readonly gvgEverybodyVotes: boolean;
   readonly faceOffJoinNoParty: boolean;
   readonly toggleHints: boolean;
   readonly toggleNotifications: boolean;
+  readonly toggleSkillNotifications: boolean;
+  readonly toggleInGameNightVision: boolean;
   readonly witherHealthHearts: boolean;
+  readonly combatTracker: boolean;
+  readonly warcryShortcuts: boolean;
+  readonly tutorialCompleted: number;
+  readonly endGameLeaderboard: string;
   readonly colorblind: MegaWallsColorblindSettings;
   readonly packages: readonly string[];
   readonly cakesFoundByName: readonly string[];
   readonly votes: Readonly<Record<string, number>>;
   readonly chosenSkins: Readonly<Record<string, string>>;
+  readonly effects: Readonly<Record<string, string>>;
   readonly finalKillsLegacy: number;
+  readonly finalKillsFaceOffLegacy: number;
+  readonly finalKillsPracticeLegacy: number;
   readonly finalAssistsLegacy: number;
   readonly finalDeathsLegacy: number;
   readonly witherDamageLegacy: number;
   readonly killsNewLegacy: number;
+  readonly killsPracticeLegacy: number;
   readonly deathsNewLegacy: number;
   readonly cakesFound: MegaWallsModeStats;
   readonly plays: MegaWallsPlays;
   readonly stats: MegaWallsActivityStats;
-  readonly byClass: Readonly<Record<MegaWallsClass, MegaWallsClassBreakdown>>;
+  readonly byClass: Readonly<Record<string, MegaWallsClassBreakdown>>;
+  readonly legacyClassStats: Readonly<
+    Record<string, Readonly<Record<string, number>>>
+  >;
   readonly weekly: MegaWallsWeeklyStats;
   readonly monthly: MegaWallsMonthlyStats;
   readonly classes: Readonly<Record<string, MegaWallsClassProgress>>;
@@ -71,57 +127,79 @@ export interface MegaWallsStats {
     Record<string, Readonly<Record<string, string>>>
   >;
   readonly leaderboardSettings: MegaWallsLeaderboardSettings;
+  readonly healthWarningSettings: MegaWallsHealthWarningSettings;
+  readonly privateGameSettings: MegaWallsPrivateGameSettings;
 }
 ```
 
-Notable fields:
+| Field                      | Raw source                    | Notes                                                                                |
+| -------------------------- | ----------------------------- | ------------------------------------------------------------------------------------ |
+| `coins`                    | `coins`                       |                                                                                      |
+| `witherCoins`              | `witherCoins`                 |                                                                                      |
+| `classPoints`              | `class_points`                |                                                                                      |
+| `classPointsVersion`       | `class_points_version`        |                                                                                      |
+| `mythicFavor`              | `mythic_favor`                |                                                                                      |
+| `exchangeFavorBought`      | `exchange_favor_bought`       |                                                                                      |
+| `exchangeFavorSold`        | `exchange_favor_sold`         |                                                                                      |
+| `newEnderchest`            | `new_echest`                  |                                                                                      |
+| `newPrestige`              | `new_prestige`                |                                                                                      |
+| `pickaxeLevel`             | `pickaxeLevel`                |                                                                                      |
+| `pickaxeRefunded`          | `pickaxe_refunded`            |                                                                                      |
+| `playStreak`               | `play_streak`                 |                                                                                      |
+| `refundedCoinsPp`          | `refundedCoinsPP`             |                                                                                      |
+| `shoutTotal`               | `shoutTotal`                  |                                                                                      |
+| `chosenClass`              | `chosen_class`                |                                                                                      |
+| `chosenKillSign`           | `chosen_kill_sign`            |                                                                                      |
+| `killMessage`              | `kill_message`                |                                                                                      |
+| `dreadlordEffect`          | `Dreadlord_effect`            |                                                                                      |
+| `activeChallengeMap`       | `activeChallengeMap`          |                                                                                      |
+| `warCry`                   | `war_cry`                     |                                                                                      |
+| `smileyKills`              | `smiley_kills`                |                                                                                      |
+| `blood`                    | `blood`                       |                                                                                      |
+| `mutationsVisibility`      | `mutations_visibility`        |                                                                                      |
+| `gvgDecide`                | `gvg_decide`                  |                                                                                      |
+| `gvgEverybodyVotes`        | `gvg_everybodyvotes`          |                                                                                      |
+| `faceOffJoinNoParty`       | `faceoff_join_noparty`        |                                                                                      |
+| `toggleHints`              | `toggle_hints`                |                                                                                      |
+| `toggleNotifications`      | `toggle_notifications`        |                                                                                      |
+| `toggleSkillNotifications` | `toggle_skill_notifications`  |                                                                                      |
+| `toggleInGameNightVision`  | `toggle_in_game_night_vision` |                                                                                      |
+| `witherHealthHearts`       | `wither_health_hearts`        |                                                                                      |
+| `combatTracker`            | `combatTracker`               |                                                                                      |
+| `warcryShortcuts`          | `warcry_shortcuts`            |                                                                                      |
+| `tutorialCompleted`        | `tutorial_completed`          |                                                                                      |
+| `endGameLeaderboard`       | `end_game_leaderboard`        |                                                                                      |
+| `packages`                 | `packages`                    | Filtered to string entries.                                                          |
+| `cakesFoundByName`         | `cakes_found_by_name`         | Filtered to string entries.                                                          |
+| `votes`                    | `votes_*`                     | `<map>` → numeric vote count.                                                        |
+| `chosenSkins`              | `chosen_skin_*`               | `<class>` → skin string.                                                             |
+| `effects`                  | `*_effect`                    | `<name>` → effect string (key is the part before `_effect`).                         |
+| `finalKillsLegacy`         | `finalKills`                  |                                                                                      |
+| `finalKillsFaceOffLegacy`  | `finalKills_face_off`         |                                                                                      |
+| `finalKillsPracticeLegacy` | `finalKills_practice`         |                                                                                      |
+| `finalAssistsLegacy`       | `finalAssists`                |                                                                                      |
+| `finalDeathsLegacy`        | `finalDeaths`                 |                                                                                      |
+| `witherDamageLegacy`       | `witherDamage`                |                                                                                      |
+| `killsNewLegacy`           | `kills_new`                   |                                                                                      |
+| `killsPracticeLegacy`      | `kills_practice`              |                                                                                      |
+| `deathsNewLegacy`          | `deaths_new`                  |                                                                                      |
+| `cakesFound`               | `cakes_found`                 | `MegaWallsModeStats` over the `cakes_found` base.                                    |
+| `stats`                    | (no prefix)                   | `MegaWallsActivityStats` read from the root with an empty prefix.                    |
+| `byClass`                  | per discovered class          | `MegaWallsClassBreakdown` per discovered class name.                                 |
+| `legacyClassStats`         | `<Class>_<stat>` numbers      | Capitalized-prefixed numeric keys (excluding `*_effect`) grouped by class then stat. |
+| `kits`                     | per kit                       | `MegaWallsKitStats` for each of the 27 fixed kit names.                              |
+| `kitInventories`           | `*Inventory`                  | Each raw key ending `Inventory` → slot → item string map.                            |
 
-| Field                                                     | Meaning                                                                                                                                      |
-| --------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| `coins` / `witherCoins`                                   | Standard coins and wither coins balances.                                                                                                    |
-| `classPoints` / `classPointsVersion`                      | Current class points and the class-points schema version.                                                                                    |
-| `mythicFavor`, `exchangeFavorBought`, `exchangeFavorSold` | Mythic favor balance and favor exchange totals.                                                                                              |
-| `packages`                                                | Raw `packages` array of cosmetic/package identifiers.                                                                                        |
-| `cakesFoundByName`                                        | Raw `cakes_found_by_name` array of cake identifiers.                                                                                         |
-| `votes`                                                   | Map of vote keys (the `votes_` prefix stripped) to counts.                                                                                   |
-| `chosenSkins`                                             | Map of skin keys (the `chosen_skin_` prefix stripped) to chosen skin values.                                                                 |
-| `*Legacy`                                                 | Legacy top-level kill/assist/death/damage counters (`finalKills`, `finalAssists`, `finalDeaths`, `witherDamage`, `kills_new`, `deaths_new`). |
-| `stats`                                                   | Overall (non-kit) activity statistics.                                                                                                       |
-| `byClass`                                                 | Per-class lifetime breakdown, keyed by the 15 `MegaWallsClass` values.                                                                       |
-| `kits`                                                    | Per-kit statistics, keyed by kit identifier (see kit list below).                                                                            |
-| `kitInventories`                                          | Per-kit inventory maps from any raw key ending in `Inventory`.                                                                               |
+---
 
-The `kits` record is populated for each of these kit identifiers: `cow`, `hunter`, `shark`, `arcanist`, `dreadlord`, `golem`, `herobrine`, `pigman`, `zombie`, `blaze`, `enderman`, `shaman`, `squid`, `creeper`, `pirate`, `sheep`, `skeleton`, `spider`, `werewolf`, `angel`, `assassin`, `automaton`, `moleman`, `phoenix`, `renegade`, `snowman`, `dragon`.
-
-### MegaWallsClass
-
-Union of the 15 recognized Mega Walls class names. Used as the key type for `byClass`, `weekly.byClass`, and the tier breakdown records.
-
-```ts
-export type MegaWallsClass =
-  | "Arcanist"
-  | "Blaze"
-  | "Creeper"
-  | "Dreadlord"
-  | "Enderman"
-  | "Golem"
-  | "Herobrine"
-  | "Hunter"
-  | "Pigman"
-  | "Pirate"
-  | "Shaman"
-  | "Skeleton"
-  | "Spider"
-  | "Squid"
-  | "Zombie";
-```
+## Shared stat shapes
 
 ### MegaWallsModeStats
 
-A single statistic split across the overall total and the three game modes (standard, face-off, GvG).
+The per-mode breakdown applied to most counters. Read from `<base>`, `<base>_standard`, `<base>_face_off`, `<base>_gvg`.
 
 ```ts
-export interface MegaWallsModeStats {
+interface MegaWallsModeStats {
   readonly overall: number;
   readonly standard: number;
   readonly faceOff: number;
@@ -131,10 +209,10 @@ export interface MegaWallsModeStats {
 
 ### MegaWallsRecordStats
 
-A win/loss-style record split across modes, plus a practice total.
+Like `MegaWallsModeStats` but with an extra `practice` mode. Used for `wins` and `losses`.
 
 ```ts
-export interface MegaWallsRecordStats {
+interface MegaWallsRecordStats {
   readonly overall: number;
   readonly standard: number;
   readonly faceOff: number;
@@ -143,12 +221,14 @@ export interface MegaWallsRecordStats {
 }
 ```
 
+`practice` reads `<base>_practice`.
+
 ### MegaWallsKillStats
 
-A kill statistic split across modes, plus nested melee and behind-melee breakdowns.
+Mode breakdown plus melee sub-breakdowns. Used for `kills` and `finalKills`.
 
 ```ts
-export interface MegaWallsKillStats {
+interface MegaWallsKillStats {
   readonly overall: number;
   readonly standard: number;
   readonly faceOff: number;
@@ -158,12 +238,21 @@ export interface MegaWallsKillStats {
 }
 ```
 
+| Field         | Raw source                                      |
+| ------------- | ----------------------------------------------- |
+| `overall`     | `<base>`                                        |
+| `standard`    | `<base>_standard`                               |
+| `faceOff`     | `<base>_face_off`                               |
+| `gvg`         | `<base>_gvg`                                    |
+| `melee`       | `MegaWallsModeStats` over `<base>_melee`        |
+| `meleeBehind` | `MegaWallsModeStats` over `<base>_melee_behind` |
+
 ### MegaWallsActivationStats
 
-Ability activation counts split across modes, plus a deathmatch breakdown.
+Mode breakdown plus a deathmatch sub-breakdown. Base is `<prefix>activations`.
 
 ```ts
-export interface MegaWallsActivationStats {
+interface MegaWallsActivationStats {
   readonly overall: number;
   readonly standard: number;
   readonly faceOff: number;
@@ -172,12 +261,14 @@ export interface MegaWallsActivationStats {
 }
 ```
 
+`deathmatch` is a `MegaWallsModeStats` over `<base>_deathmatch`.
+
 ### MegaWallsBlocksPlacedStats
 
-Blocks-placed counts split across modes, plus a preparation-phase breakdown.
+Mode breakdown plus a preparation sub-breakdown. Base is `<prefix>blocks_placed`.
 
 ```ts
-export interface MegaWallsBlocksPlacedStats {
+interface MegaWallsBlocksPlacedStats {
   readonly overall: number;
   readonly standard: number;
   readonly faceOff: number;
@@ -186,12 +277,14 @@ export interface MegaWallsBlocksPlacedStats {
 }
 ```
 
+`preparation` is a `MegaWallsModeStats` over `<base>_preparation`.
+
 ### MegaWallsDistanceStats
 
-Distance (meters walked) split across modes, plus a speed breakdown.
+Mode breakdown plus a speed sub-breakdown. Base is `<prefix>meters_walked`.
 
 ```ts
-export interface MegaWallsDistanceStats {
+interface MegaWallsDistanceStats {
   readonly overall: number;
   readonly standard: number;
   readonly faceOff: number;
@@ -200,12 +293,18 @@ export interface MegaWallsDistanceStats {
 }
 ```
 
+`speed` is a `MegaWallsModeStats` over `<base>_speed`.
+
+---
+
+## Activity stats
+
 ### MegaWallsActivityStats
 
-The full activity statistics block, used both for the overall `stats` and for each kit's `stats`. Every plain entry is a `MegaWallsModeStats`; the trailing entries use the richer kill, activation, blocks-placed, distance, and record shapes.
+The main activity-counter block. It appears both at the root (`stats`, empty prefix) and per kit (`kits[kit].stats`, prefix `<kit>_`). Every field except the final seven is a `MegaWallsModeStats` read from `<prefix><raw_base>`. The trailing seven are the richer shapes (`kills`, `finalKills` as `MegaWallsKillStats`; `activations`, `blocksPlaced`, `metersWalked` as their named shapes; `wins`, `losses` as `MegaWallsRecordStats`).
 
 ```ts
-export interface MegaWallsActivityStats {
+interface MegaWallsActivityStats {
   readonly absorptionPotionsDrunk: MegaWallsModeStats;
   readonly alliesHealed: MegaWallsModeStats;
   readonly amountHealed: MegaWallsModeStats;
@@ -308,18 +407,192 @@ export interface MegaWallsActivityStats {
 }
 ```
 
-### MegaWallsAbilitySlotStats
+Raw base for each `MegaWallsModeStats` field (read as `<prefix><raw_base>` and its `_standard` / `_face_off` / `_gvg` siblings):
 
-Per-ability-slot statistics for the `a`, `b`, and `c` slots of a kit. A subset of the activity stats relevant to ability usage.
+| Field                          | Raw base                           |
+| ------------------------------ | ---------------------------------- |
+| `absorptionPotionsDrunk`       | `absorption_potions_drunk`         |
+| `alliesHealed`                 | `allies_healed`                    |
+| `amountHealed`                 | `amount_healed`                    |
+| `applesEaten`                  | `apples_eaten`                     |
+| `arrowsFired`                  | `arrows_fired`                     |
+| `arrowsFromRend`               | `arrows_from_rend`                 |
+| `arrowsHit`                    | `arrows_hit`                       |
+| `assists`                      | `assists`                          |
+| `bedsCrafted`                  | `beds_crafted`                     |
+| `bedsPlaced`                   | `beds_placed`                      |
+| `berserkedKills`               | `berserked_kills`                  |
+| `blazesSpawned`                | `blazes_spawned`                   |
+| `blizzardSecondsSlow`          | `blizzard_seconds_slow`            |
+| `blocksBroken`                 | `blocks_broken`                    |
+| `breadCrafted`                 | `bread_crafted`                    |
+| `breadEaten`                   | `bread_eaten`                      |
+| `bucketBarriersBroken`         | `bucket_barriers_broken`           |
+| `damageDealt`                  | `damage_dealt`                     |
+| `darkMatterArmor`              | `dark_matter_armor`                |
+| `deaths`                       | `deaths`                           |
+| `defenderAssists`              | `defender_assists`                 |
+| `defenderFinalAssists`         | `defender_final_assists`           |
+| `defenderFinalKills`           | `defender_final_kills`             |
+| `defenderKills`                | `defender_kills`                   |
+| `diamondOreBroken`             | `diamond_ore_broken`               |
+| `divineInterventions`          | `divine_interventions`             |
+| `endurancedFinalKills`         | `enduranced_final_kills`           |
+| `enemiesHit`                   | `enemies_hit`                      |
+| `energyFromGrapplingHook`      | `energy_from_grappling_hook`       |
+| `energySyphoned`               | `energy_syphoned`                  |
+| `finalAssists`                 | `final_assists`                    |
+| `finalAssistsAfterFinalKilled` | `final_assists_after_final_killed` |
+| `finalAssistsMelee`            | `final_assists_melee`              |
+| `finalDeaths`                  | `final_deaths`                     |
+| `finalKillsAfterFinalKilled`   | `final_kills_after_final_killed`   |
+| `finalKillsAfterGrapplingHook` | `final_kills_after_grappling_hook` |
+| `finalKillsBelow10Hp`          | `final_kills_below_10_hp`          |
+| `finalKillsBelow5Hp`           | `final_kills_below_5_hp`           |
+| `finalKillsRanged`             | `final_kills_ranged`               |
+| `finalKillsRanged30`           | `final_kills_ranged_30`            |
+| `finalKillsRanged50`           | `final_kills_ranged_50`            |
+| `finalKillsWithFire`           | `final_kills_with_fire`            |
+| `finalWaterKills`              | `final_water_kills`                |
+| `finalsWithStrength`           | `finals_with_strength`             |
+| `fishEaten`                    | `fish_eaten`                       |
+| `foodEaten`                    | `food_eaten`                       |
+| `forceOfNatureFinalAssists`    | `force_of_nature_final_assists`    |
+| `forceOfNatureFinalKills`      | `force_of_nature_final_kills`      |
+| `gamesBedsPlaced`              | `games_beds_placed`                |
+| `gamesPlayed`                  | `games_played`                     |
+| `goldenApplesEaten`            | `golden_apples_eaten`              |
+| `healedLowTeammates`           | `healed_low_teammates`             |
+| `heroismTriggers`              | `heroism_triggers`                 |
+| `heroismTriggersInDm`          | `heroism_triggers_in_dm`           |
+| `innerInkBlinds`               | `inner_ink_blinds`                 |
+| `ironArmorGifted`              | `iron_armor_gifted`                |
+| `ironArmorGiftedDecember`      | `iron_armor_gifted_december`       |
+| `ironHeartAbsorption`          | `iron_heart_absorption`            |
+| `ironOreBroken`                | `iron_ore_broken`                  |
+| `ironSwordCrafted`             | `iron_sword_crafted`               |
+| `junkItemsEaten`               | `junk_items_eaten`                 |
+| `killsRanged`                  | `kills_ranged`                     |
+| `killsWithStrength`            | `kills_with_strength`              |
+| `masterAlechmyHearts`          | `master_alechmy_hearts`            |
+| `metersFallen`                 | `meters_fallen`                    |
+| `metersTravelled`              | `meters_travelled`                 |
+| `onFireFinalKills`             | `on_fire_final_kills`              |
+| `onFireKills`                  | `on_fire_kills`                    |
+| `perfectDisguises`             | `perfect_disguises`                |
+| `playersHealed`                | `players_healed`                   |
+| `potionsDrunk`                 | `potions_drunk`                    |
+| `potionsSplashed`              | `potions_splashed`                 |
+| `primedTntKills`               | `primed_tnt_kills`                 |
+| `resistanceTimeSeconds`        | `resistance_time_seconds`          |
+| `selfHealed`                   | `self_healed`                      |
+| `snowmenBuilt`                 | `snowmen_built`                    |
+| `snowmenPlayersHit`            | `snowmen_players_hit`              |
+| `steaksEaten`                  | `steaks_eaten`                     |
+| `strikesFromCloak`             | `strikes_from_cloak`               |
+| `swordCrafted`                 | `sword_crafted`                    |
+| `timePlayed`                   | `time_played`                      |
+| `totalDeaths`                  | `total_deaths`                     |
+| `totalFinalKills`              | `total_final_kills`                |
+| `totalKills`                   | `total_kills`                      |
+| `treasuresFound`               | `treasures_found`                  |
+| `ultraPasteurizedDrank`        | `ultra_pasteurized_drank`          |
+| `venomStrikePoisonDamage`      | `venom_strike_poison_damage`       |
+| `waterKills`                   | `water_kills`                      |
+| `witherDamage`                 | `wither_damage`                    |
+| `witherKills`                  | `wither_kills`                     |
+| `witherKillsLastAlive`         | `wither_kills_last_alive`          |
+| `woodChopped`                  | `wood_chopped`                     |
+
+The richer trailing fields:
+
+| Field          | Shape                        | Raw base                |
+| -------------- | ---------------------------- | ----------------------- |
+| `kills`        | `MegaWallsKillStats`         | `<prefix>kills`         |
+| `finalKills`   | `MegaWallsKillStats`         | `<prefix>final_kills`   |
+| `activations`  | `MegaWallsActivationStats`   | `<prefix>activations`   |
+| `blocksPlaced` | `MegaWallsBlocksPlacedStats` | `<prefix>blocks_placed` |
+| `metersWalked` | `MegaWallsDistanceStats`     | `<prefix>meters_walked` |
+| `wins`         | `MegaWallsRecordStats`       | `<prefix>wins`          |
+| `losses`       | `MegaWallsRecordStats`       | `<prefix>losses`        |
+
+---
+
+## Kits
+
+### MegaWallsKitStats
+
+One entry per kit (the 27 fixed kit names: `cow`, `hunter`, `shark`, `arcanist`, `dreadlord`, `golem`, `herobrine`, `pigman`, `zombie`, `blaze`, `enderman`, `shaman`, `squid`, `creeper`, `pirate`, `sheep`, `skeleton`, `spider`, `werewolf`, `angel`, `assassin`, `automaton`, `moleman`, `phoenix`, `renegade`, `snowman`, `dragon`). All values are read with the `<kit>_` prefix.
 
 ```ts
-export interface MegaWallsAbilitySlotStats {
+interface MegaWallsKitStats {
+  readonly stats: MegaWallsActivityStats;
+  readonly tiers: MegaWallsKitTiers;
+  readonly newTiers: MegaWallsKitTiers;
+  readonly infused: MegaWallsKitTiers;
+  readonly enderchestLevel: number;
+  readonly classPoints: number;
+  readonly prestigeLevel: number;
+  readonly reclaimed: number;
+  readonly abilitySlots: MegaWallsKitAbilitySlots;
+}
+```
+
+| Field             | Raw source                                                 |
+| ----------------- | ---------------------------------------------------------- |
+| `stats`           | `MegaWallsActivityStats` over prefix `<kit>_`.             |
+| `tiers`           | `MegaWallsKitTiers` over prefix `<kit>_` (e.g. `<kit>_a`). |
+| `newTiers`        | `MegaWallsKitTiers` over prefix `<kit>_new_`.              |
+| `infused`         | `MegaWallsKitTiers` from `<kit>_<slot>_infused`.           |
+| `enderchestLevel` | `<kit>_enderchest_level`                                   |
+| `classPoints`     | `<kit>_class_points`                                       |
+| `prestigeLevel`   | `<kit>_prestige_level`                                     |
+| `reclaimed`       | `<kit>_reclaimed`                                          |
+| `abilitySlots`    | `MegaWallsKitAbilitySlots` (slots `a`–`g`).                |
+
+### MegaWallsKitTiers
+
+```ts
+interface MegaWallsKitTiers {
+  readonly a: number;
+  readonly b: number;
+  readonly c: number;
+  readonly d: number;
+  readonly g: number;
+}
+```
+
+For `tiers` and `newTiers` each field reads `<prefix><slot>`; for `infused` each reads `<kit>_<slot>_infused`.
+
+### MegaWallsKitAbilitySlots
+
+The five ability slots of a kit. Slots `a`, `b`, `c` share the full ability-slot shape; `d` and `g` are leaner.
+
+```ts
+interface MegaWallsKitAbilitySlots {
+  readonly a: MegaWallsAbilitySlotStats;
+  readonly b: MegaWallsAbilitySlotStats;
+  readonly c: MegaWallsAbilitySlotStats;
+  readonly d: MegaWallsAbilityDSlotStats;
+  readonly g: MegaWallsAbilityGSlotStats;
+}
+```
+
+Each slot is read with the prefix `<kit>_<slot>_`.
+
+### MegaWallsAbilitySlotStats
+
+The ability-slot stat block for slots `a`, `b`, and `c`. Each leading field is a `MegaWallsModeStats` over `<prefix><raw_base>`; the trailing three are the richer shapes.
+
+```ts
+interface MegaWallsAbilitySlotStats {
   readonly alliesHealed: MegaWallsModeStats;
   readonly amountHealed: MegaWallsModeStats;
   readonly assists: MegaWallsModeStats;
   readonly blazesSpawned: MegaWallsModeStats;
   readonly blocksBroken: MegaWallsModeStats;
   readonly damageDealt: MegaWallsModeStats;
+  readonly diamondOreBroken: MegaWallsModeStats;
   readonly defenderAssists: MegaWallsModeStats;
   readonly defenderFinalAssists: MegaWallsModeStats;
   readonly defenderFinalKills: MegaWallsModeStats;
@@ -356,69 +629,96 @@ export interface MegaWallsAbilitySlotStats {
 }
 ```
 
-### MegaWallsAbilityGSlotStats
+Raw base for each `MegaWallsModeStats` field:
 
-Statistics for the `g` (ultimate) ability slot of a kit.
+| Field                          | Raw base                           |
+| ------------------------------ | ---------------------------------- |
+| `alliesHealed`                 | `allies_healed`                    |
+| `amountHealed`                 | `amount_healed`                    |
+| `assists`                      | `assists`                          |
+| `blazesSpawned`                | `blazes_spawned`                   |
+| `blocksBroken`                 | `blocks_broken`                    |
+| `damageDealt`                  | `damage_dealt`                     |
+| `diamondOreBroken`             | `diamond_ore_broken`               |
+| `defenderAssists`              | `defender_assists`                 |
+| `defenderFinalAssists`         | `defender_final_assists`           |
+| `defenderFinalKills`           | `defender_final_kills`             |
+| `defenderKills`                | `defender_kills`                   |
+| `endurancedFinalKills`         | `enduranced_final_kills`           |
+| `enemiesHit`                   | `enemies_hit`                      |
+| `finalAssists`                 | `final_assists`                    |
+| `finalAssistsAfterFinalKilled` | `final_assists_after_final_killed` |
+| `finalAssistsMelee`            | `final_assists_melee`              |
+| `finalKillsAfterFinalKilled`   | `final_kills_after_final_killed`   |
+| `finalKillsAfterGrapplingHook` | `final_kills_after_grappling_hook` |
+| `finalKillsBelow10Hp`          | `final_kills_below_10_hp`          |
+| `finalKillsBelow5Hp`           | `final_kills_below_5_hp`           |
+| `healedLowTeammates`           | `healed_low_teammates`             |
+| `heroismTriggers`              | `heroism_triggers`                 |
+| `heroismTriggersInDm`          | `heroism_triggers_in_dm`           |
+| `innerInkBlinds`               | `inner_ink_blinds`                 |
+| `ironHeartAbsorption`          | `iron_heart_absorption`            |
+| `ironOreBroken`                | `iron_ore_broken`                  |
+| `junkItemsEaten`               | `junk_items_eaten`                 |
+| `metersTravelled`              | `meters_travelled`                 |
+| `onFireFinalKills`             | `on_fire_final_kills`              |
+| `onFireKills`                  | `on_fire_kills`                    |
+| `perfectDisguises`             | `perfect_disguises`                |
+| `playersHealed`                | `players_healed`                   |
+| `resistanceTimeSeconds`        | `resistance_time_seconds`          |
+| `selfHealed`                   | `self_healed`                      |
+| `totalFinalKills`              | `total_final_kills`                |
+| `totalKills`                   | `total_kills`                      |
+| `venomStrikePoisonDamage`      | `venom_strike_poison_damage`       |
+
+Trailing fields: `kills` (`MegaWallsKillStats` over `<prefix>kills`), `finalKills` (`MegaWallsKillStats` over `<prefix>final_kills`), `activations` (`MegaWallsActivationStats` over prefix).
+
+### MegaWallsAbilityDSlotStats
+
+The leaner shape for slot `d`.
 
 ```ts
-export interface MegaWallsAbilityGSlotStats {
+interface MegaWallsAbilityDSlotStats {
+  readonly activations: MegaWallsActivationStats;
+  readonly selfHealed: MegaWallsModeStats;
+}
+```
+
+| Field         | Raw source                                       |
+| ------------- | ------------------------------------------------ |
+| `activations` | `MegaWallsActivationStats` over prefix.          |
+| `selfHealed`  | `MegaWallsModeStats` over `<prefix>self_healed`. |
+
+### MegaWallsAbilityGSlotStats
+
+The shape for slot `g`.
+
+```ts
+interface MegaWallsAbilityGSlotStats {
   readonly activations: MegaWallsActivationStats;
   readonly amountHealed: MegaWallsModeStats;
   readonly darkMatterArmor: MegaWallsModeStats;
+  readonly selfHealed: MegaWallsModeStats;
 }
 ```
 
-### MegaWallsKitTiers
+| Field             | Raw source                                             |
+| ----------------- | ------------------------------------------------------ |
+| `activations`     | `MegaWallsActivationStats` over prefix.                |
+| `amountHealed`    | `MegaWallsModeStats` over `<prefix>amount_healed`.     |
+| `darkMatterArmor` | `MegaWallsModeStats` over `<prefix>dark_matter_armor`. |
+| `selfHealed`      | `MegaWallsModeStats` over `<prefix>self_healed`.       |
 
-Tier levels for a kit's `a`, `b`, `c`, `d`, and `g` skill slots. Used for the base tiers, the new tiers, and the infused tiers.
+---
 
-```ts
-export interface MegaWallsKitTiers {
-  readonly a: number;
-  readonly b: number;
-  readonly c: number;
-  readonly d: number;
-  readonly g: number;
-}
-```
-
-### MegaWallsKitAbilitySlots
-
-The per-slot ability statistics container for a kit.
-
-```ts
-export interface MegaWallsKitAbilitySlots {
-  readonly a: MegaWallsAbilitySlotStats;
-  readonly b: MegaWallsAbilitySlotStats;
-  readonly c: MegaWallsAbilitySlotStats;
-  readonly g: MegaWallsAbilityGSlotStats;
-}
-```
-
-### MegaWallsKitStats
-
-All statistics for a single kit, including its activity block, tier sets, and ability slots.
-
-```ts
-export interface MegaWallsKitStats {
-  readonly stats: MegaWallsActivityStats;
-  readonly tiers: MegaWallsKitTiers;
-  readonly newTiers: MegaWallsKitTiers;
-  readonly infused: MegaWallsKitTiers;
-  readonly enderchestLevel: number;
-  readonly classPoints: number;
-  readonly prestigeLevel: number;
-  readonly reclaimed: number;
-  readonly abilitySlots: MegaWallsKitAbilitySlots;
-}
-```
+## Per-class breakdowns
 
 ### MegaWallsClassBreakdown
 
-Lifetime per-class breakdown, keyed in `MegaWallsStats.byClass` by `MegaWallsClass`.
+One entry per discovered class in `byClass`. Read with the `<klass>` suffix on each raw key.
 
 ```ts
-export interface MegaWallsClassBreakdown {
+interface MegaWallsClassBreakdown {
   readonly kills: number;
   readonly killsNew: number;
   readonly deaths: number;
@@ -428,98 +728,236 @@ export interface MegaWallsClassBreakdown {
   readonly assists: number;
   readonly finalKills: number;
   readonly finalAssists: number;
+  readonly faceOffKills: number;
+  readonly faceOffFinalKills: number;
   readonly faceOffWins: number;
   readonly faceOffLosses: number;
+  readonly practiceKills: number;
+  readonly practiceFinalKills: number;
   readonly practiceWins: number;
   readonly practiceLosses: number;
 }
 ```
 
-### MegaWallsPeriodTierFinalKills
+| Field                | Raw source                    |
+| -------------------- | ----------------------------- |
+| `kills`              | `kills_<klass>`               |
+| `killsNew`           | `kills_new_<klass>`           |
+| `deaths`             | `deaths_<klass>`              |
+| `deathsNew`          | `deaths_new_<klass>`          |
+| `wins`               | `wins_<klass>`                |
+| `losses`             | `losses_<klass>`              |
+| `assists`            | `assists_<klass>`             |
+| `finalKills`         | `finalKills_<klass>`          |
+| `finalAssists`       | `finalAssists_<klass>`        |
+| `faceOffKills`       | `kills_face_off_<klass>`      |
+| `faceOffFinalKills`  | `finalKills_face_off_<klass>` |
+| `faceOffWins`        | `wins_face_off_<klass>`       |
+| `faceOffLosses`      | `losses_face_off_<klass>`     |
+| `practiceKills`      | `kills_practice_<klass>`      |
+| `practiceFinalKills` | `finalKills_practice_<klass>` |
+| `practiceWins`       | `wins_practice_<klass>`       |
+| `practiceLosses`     | `losses_practice_<klass>`     |
 
-Final-kill counts split by tier `a` and tier `b` for a weekly or monthly period.
+### MegaWallsWeeklyClassBreakdown
+
+One entry per discovered class in `weekly.byClass`. Read with the `<klass>` suffix.
 
 ```ts
-export interface MegaWallsPeriodTierFinalKills {
+interface MegaWallsWeeklyClassBreakdown {
+  readonly kills: number;
+  readonly deaths: number;
+  readonly wins: number;
+  readonly losses: number;
+  readonly finalKills: number;
+  readonly faceOffKills: number;
+  readonly faceOffWins: number;
+  readonly faceOffLosses: number;
+  readonly practiceKills: number;
+  readonly practiceWins: number;
+  readonly practiceLosses: number;
+}
+```
+
+| Field            | Raw source                      |
+| ---------------- | ------------------------------- |
+| `kills`          | `weeklyKills_<klass>`           |
+| `deaths`         | `weeklyDeaths_<klass>`          |
+| `wins`           | `weeklyWins_<klass>`            |
+| `losses`         | `weeklyLosses_<klass>`          |
+| `finalKills`     | `weeklyFinalKills_<klass>`      |
+| `faceOffKills`   | `weeklyKills_face_off_<klass>`  |
+| `faceOffWins`    | `weeklyWins_face_off_<klass>`   |
+| `faceOffLosses`  | `weeklyLosses_face_off_<klass>` |
+| `practiceKills`  | `weeklyKills_practice_<klass>`  |
+| `practiceWins`   | `weeklyWins_practice_<klass>`   |
+| `practiceLosses` | `weeklyLosses_practice_<klass>` |
+
+### MegaWallsPeriodTierFinalKills
+
+Final-kills split across the two tracked tiers. Used throughout the weekly and monthly period blocks.
+
+```ts
+interface MegaWallsPeriodTierFinalKills {
   readonly a: number;
   readonly b: number;
 }
 ```
 
-### MegaWallsWeeklyClassBreakdown
+Read as `<period>_finalKills_<klass>_a` and `<period>_finalKills_<klass>_b`, where `<period>` is `weekly` or `monthly` and `<klass>` is a class name or a mode token such as `face_off` / `practice`.
 
-Per-class weekly breakdown, keyed in `MegaWallsWeeklyStats.byClass` by `MegaWallsClass`.
+---
 
-```ts
-export interface MegaWallsWeeklyClassBreakdown {
-  readonly kills: number;
-  readonly deaths: number;
-  readonly wins: number;
-  readonly losses: number;
-  readonly finalKills: number;
-  readonly faceOffWins: number;
-  readonly faceOffLosses: number;
-  readonly practiceWins: number;
-  readonly practiceLosses: number;
-}
-```
+## Periodic stats
 
 ### MegaWallsWeeklyStats
 
-Weekly aggregate stats plus per-class and per-tier breakdowns.
-
 ```ts
-export interface MegaWallsWeeklyStats {
+interface MegaWallsWeeklyStats {
   readonly kills: number;
   readonly deaths: number;
   readonly wins: number;
   readonly losses: number;
   readonly finalKills: number;
+  readonly faceOffKills: number;
   readonly faceOffWins: number;
   readonly faceOffLosses: number;
+  readonly practiceKills: number;
   readonly practiceWins: number;
   readonly practiceLosses: number;
-  readonly byClass: Readonly<
-    Record<MegaWallsClass, MegaWallsWeeklyClassBreakdown>
-  >;
+  readonly byClass: Readonly<Record<string, MegaWallsWeeklyClassBreakdown>>;
   readonly finalKillsByTier: MegaWallsPeriodTierFinalKills;
+  readonly finalKillsByTierFaceOff: MegaWallsPeriodTierFinalKills;
+  readonly finalKillsByTierPractice: MegaWallsPeriodTierFinalKills;
   readonly finalKillsByClassTier: Readonly<
-    Record<MegaWallsClass, MegaWallsPeriodTierFinalKills>
+    Record<string, MegaWallsPeriodTierFinalKills>
+  >;
+  readonly finalKillsByClassTierFaceOff: Readonly<
+    Record<string, MegaWallsPeriodTierFinalKills>
+  >;
+  readonly finalKillsByClassTierPractice: Readonly<
+    Record<string, MegaWallsPeriodTierFinalKills>
   >;
 }
 ```
+
+| Field                           | Raw source                                               |
+| ------------------------------- | -------------------------------------------------------- |
+| `kills`                         | `weeklyKills`                                            |
+| `deaths`                        | `weeklyDeaths`                                           |
+| `wins`                          | `weeklyWins`                                             |
+| `losses`                        | `weeklyLosses`                                           |
+| `finalKills`                    | `weeklyFinalKills`                                       |
+| `faceOffKills`                  | `weeklyKills_face_off`                                   |
+| `faceOffWins`                   | `weeklyWins_face_off`                                    |
+| `faceOffLosses`                 | `weeklyLosses_face_off`                                  |
+| `practiceKills`                 | `weeklyKills_practice`                                   |
+| `practiceWins`                  | `weeklyWins_practice`                                    |
+| `practiceLosses`                | `weeklyLosses_practice`                                  |
+| `byClass`                       | `MegaWallsWeeklyClassBreakdown` per discovered class.    |
+| `finalKillsByTier`              | `weekly_finalKills_a` / `weekly_finalKills_b`.           |
+| `finalKillsByTierFaceOff`       | `weekly_finalKills_face_off_a` / `_b`.                   |
+| `finalKillsByTierPractice`      | `weekly_finalKills_practice_a` / `_b`.                   |
+| `finalKillsByClassTier`         | `weekly_finalKills_<klass>_a` / `_b` per class.          |
+| `finalKillsByClassTierFaceOff`  | `weekly_finalKills_face_off_<klass>_a` / `_b` per class. |
+| `finalKillsByClassTierPractice` | `weekly_finalKills_practice_<klass>_a` / `_b` per class. |
 
 ### MegaWallsMonthlyStats
 
-Monthly tier breakdowns for final kills.
-
 ```ts
-export interface MegaWallsMonthlyStats {
+interface MegaWallsMonthlyStats {
   readonly finalKillsByTier: MegaWallsPeriodTierFinalKills;
+  readonly finalKillsByTierFaceOff: MegaWallsPeriodTierFinalKills;
+  readonly finalKillsByTierPractice: MegaWallsPeriodTierFinalKills;
   readonly finalKillsByClassTier: Readonly<
-    Record<MegaWallsClass, MegaWallsPeriodTierFinalKills>
+    Record<string, MegaWallsPeriodTierFinalKills>
+  >;
+  readonly finalKillsByClassTierFaceOff: Readonly<
+    Record<string, MegaWallsPeriodTierFinalKills>
+  >;
+  readonly finalKillsByClassTierPractice: Readonly<
+    Record<string, MegaWallsPeriodTierFinalKills>
   >;
 }
 ```
 
+| Field                           | Raw source                                                |
+| ------------------------------- | --------------------------------------------------------- |
+| `finalKillsByTier`              | `monthly_finalKills_a` / `monthly_finalKills_b`.          |
+| `finalKillsByTierFaceOff`       | `monthly_finalKills_face_off_a` / `_b`.                   |
+| `finalKillsByTierPractice`      | `monthly_finalKills_practice_a` / `_b`.                   |
+| `finalKillsByClassTier`         | `monthly_finalKills_<klass>_a` / `_b` per class.          |
+| `finalKillsByClassTierFaceOff`  | `monthly_finalKills_face_off_<klass>_a` / `_b` per class. |
+| `finalKillsByClassTierPractice` | `monthly_finalKills_practice_<klass>_a` / `_b` per class. |
+
 ### MegaWallsPlays
 
-Games-played counts by mode.
-
 ```ts
-export interface MegaWallsPlays {
+interface MegaWallsPlays {
   readonly standard: number;
   readonly faceOff: number;
   readonly practice: number;
 }
 ```
 
-### MegaWallsClassSkillLevels
+| Field      | Raw source       |
+| ---------- | ---------------- |
+| `standard` | `plays_standard` |
+| `faceOff`  | `plays_face_off` |
+| `practice` | `plays_practice` |
 
-Skill levels for a class's `a`, `b`, `c`, `d`, and `g` slots.
+---
+
+## Class progress
+
+### MegaWallsClassProgress
+
+One entry per key in the raw `classes` object (non-object entries are skipped). Read with the per-class progress object.
 
 ```ts
-export interface MegaWallsClassSkillLevels {
+interface MegaWallsClassProgress {
+  readonly unlocked: boolean;
+  readonly prestige: number;
+  readonly enderchestRows: number;
+  readonly goldenTag: boolean;
+  readonly checked: boolean;
+  readonly checked2: boolean;
+  readonly checked3: boolean;
+  readonly checked4: boolean;
+  readonly prestigeChecked: boolean;
+  readonly prestigeChecked2: boolean;
+  readonly prestigeChecked4: boolean;
+  readonly skillLevels: MegaWallsClassSkillLevels;
+  readonly skillLevelsChecked: MegaWallsClassSkillFlags;
+  readonly skillLevelsChecked4: MegaWallsClassSkillFlags;
+  readonly skillLevelsChecked5: MegaWallsClassSkillFlags;
+  readonly prestigeTag: MegaWallsPrestigeTag;
+}
+```
+
+| Field                 | Raw source                                         |
+| --------------------- | -------------------------------------------------- |
+| `unlocked`            | `unlocked`                                         |
+| `prestige`            | `prestige`                                         |
+| `enderchestRows`      | `enderchest_rows`                                  |
+| `goldenTag`           | `golden_tag`                                       |
+| `checked`             | `checked`                                          |
+| `checked2`            | `checked2`                                         |
+| `checked3`            | `checked3`                                         |
+| `checked4`            | `checked4`                                         |
+| `prestigeChecked`     | `prestigeChecked`                                  |
+| `prestigeChecked2`    | `prestigeChecked2`                                 |
+| `prestigeChecked4`    | `prestigeChecked4`                                 |
+| `skillLevels`         | `MegaWallsClassSkillLevels`.                       |
+| `skillLevelsChecked`  | `MegaWallsClassSkillFlags` with suffix `Checked`.  |
+| `skillLevelsChecked4` | `MegaWallsClassSkillFlags` with suffix `Checked4`. |
+| `skillLevelsChecked5` | `MegaWallsClassSkillFlags` with suffix `Checked5`. |
+| `prestigeTag`         | `MegaWallsPrestigeTag` from `prestige_tag`.        |
+
+### MegaWallsClassSkillLevels
+
+```ts
+interface MegaWallsClassSkillLevels {
   readonly a: number;
   readonly b: number;
   readonly c: number;
@@ -528,12 +966,12 @@ export interface MegaWallsClassSkillLevels {
 }
 ```
 
+Each field reads `skill_level_<slot>`.
+
 ### MegaWallsClassSkillFlags
 
-Per-slot boolean flags for a class's skill slots. Used for both the `Checked4` and `Checked5` flag sets.
-
 ```ts
-export interface MegaWallsClassSkillFlags {
+interface MegaWallsClassSkillFlags {
   readonly a: boolean;
   readonly b: boolean;
   readonly c: boolean;
@@ -542,45 +980,34 @@ export interface MegaWallsClassSkillFlags {
 }
 ```
 
+Each field reads `skill_level_<slot><suffix>`, where `<suffix>` is `Checked`, `Checked4`, or `Checked5` depending on the parent field.
+
 ### MegaWallsPrestigeTag
 
-A class's prestige tag settings.
+Read from the per-class `prestige_tag` object.
 
 ```ts
-export interface MegaWallsPrestigeTag {
+interface MegaWallsPrestigeTag {
   readonly classPointsShowcase: boolean;
   readonly type: string;
 }
 ```
 
-When the raw `prestige_tag` is missing or not a plain object, the fields fall back to `false` and `""`.
+| Field                 | Raw source              |
+| --------------------- | ----------------------- |
+| `classPointsShowcase` | `class_points_showcase` |
+| `type`                | `type`                  |
 
-### MegaWallsClassProgress
+---
 
-Per-class progression entry, keyed in `MegaWallsStats.classes` by the raw class name string.
-
-```ts
-export interface MegaWallsClassProgress {
-  readonly unlocked: boolean;
-  readonly prestige: number;
-  readonly enderchestRows: number;
-  readonly checked4: boolean;
-  readonly prestigeChecked4: boolean;
-  readonly skillLevels: MegaWallsClassSkillLevels;
-  readonly skillLevelsChecked4: MegaWallsClassSkillFlags;
-  readonly skillLevelsChecked5: MegaWallsClassSkillFlags;
-  readonly prestigeTag: MegaWallsPrestigeTag;
-}
-```
-
-The `classes` record is empty (`{}`) when the raw `classes` value is absent or not a plain object; individual entries that are not plain objects are skipped.
+## Settings and cosmetics
 
 ### MegaWallsColorblindSettings
 
-Colorblind display settings.
+Read from the `colorblind*` keys at the root.
 
 ```ts
-export interface MegaWallsColorblindSettings {
+interface MegaWallsColorblindSettings {
   readonly enabled: boolean;
   readonly bold: boolean;
   readonly italic: boolean;
@@ -591,16 +1018,73 @@ export interface MegaWallsColorblindSettings {
 }
 ```
 
+| Field     | Raw source          |
+| --------- | ------------------- |
+| `enabled` | `colorblind`        |
+| `bold`    | `colorblind_bold`   |
+| `italic`  | `colorblind_italic` |
+| `red`     | `colorblind_red`    |
+| `green`   | `colorblind_green`  |
+| `blue`    | `colorblind_blue`   |
+| `yellow`  | `colorblind_yellow` |
+
 ### MegaWallsLeaderboardSettings
 
-Leaderboard preferences.
+Read from the raw `leaderboardSettings` object.
 
 ```ts
-export interface MegaWallsLeaderboardSettings {
+interface MegaWallsLeaderboardSettings {
   readonly resetType: string;
   readonly class: string;
 }
 ```
 
-When the raw `leaderboardSettings` is missing or not a plain object, both fields fall back to `""`.
+| Field       | Raw source  |
+| ----------- | ----------- |
+| `resetType` | `resetType` |
+| `class`     | `class`     |
+
+### MegaWallsHealthWarningSettings
+
+Read from the raw `settings` object.
+
+```ts
+interface MegaWallsHealthWarningSettings {
+  readonly half: boolean;
+  readonly low: boolean;
+  readonly veryLow: boolean;
+  readonly extremelyLow: boolean;
+  readonly dangerouslyLow: boolean;
+}
+```
+
+| Field            | Raw source       |
+| ---------------- | ---------------- |
+| `half`           | `half`           |
+| `low`            | `low`            |
+| `veryLow`        | `veryLow`        |
+| `extremelyLow`   | `extremelyLow`   |
+| `dangerouslyLow` | `dangerouslyLow` |
+
+### MegaWallsPrivateGameSettings
+
+Read from the raw `privategames` object.
+
+```ts
+interface MegaWallsPrivateGameSettings {
+  readonly timeOfDay: string;
+  readonly preparationTime: string;
+  readonly witherHealth: string;
+  readonly instantDeathmatch: string;
+  readonly energyGain: string;
+}
+```
+
+| Field               | Raw source           |
+| ------------------- | -------------------- |
+| `timeOfDay`         | `time_of_day`        |
+| `preparationTime`   | `preparation_time`   |
+| `witherHealth`      | `wither_health`      |
+| `instantDeathmatch` | `instant_deathmatch` |
+| `energyGain`        | `energy_gain`        |
 

@@ -106,6 +106,7 @@ export interface TurboKartRacersStats {
   readonly prefixColor: string;
   readonly itemMessages: boolean;
   readonly temperatureGaugeIndicator: boolean;
+  readonly announcer: boolean;
   readonly loadout: TurboKartRacersLoadout;
   readonly maps: Readonly<
     Record<TurboKartRacersMapId, TurboKartRacersMapStats>
@@ -289,6 +290,7 @@ export function parseTurboKartRacers(
     prefixColor: str(stats, "prefix_color"),
     itemMessages: bool(stats, "item_messages"),
     temperatureGaugeIndicator: bool(stats, "temperature_gauge_indicator"),
+    announcer: bool(stats, "announcer"),
     loadout: parseLoadout(stats),
     maps: parseMaps(stats, ""),
     periods: parsePeriods(stats, ""),

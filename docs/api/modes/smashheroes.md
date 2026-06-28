@@ -1,25 +1,40 @@
 # Smash Heroes
 
-Parser for the Hypixel Smash Heroes (`SuperSmash`) game mode. It maps the raw `stats.SuperSmash` JSON object field-for-field into readonly, fully-typed objects with no derived or computed values.
+The Smash Heroes module exposes a single parser, `parseSmashHeroes`, which mirrors the raw `stats.SuperSmash` block of the Hypixel player API field-for-field into readonly, fully-typed objects. Every value below is read straight from the raw JSON with no computation, no ratios, and no derived totals.
 
 ## parseSmashHeroes
 
 Parses a player's Smash Heroes stats (`stats.SuperSmash`) into a typed object.
 
 ```ts
-export function parseSmashHeroes(
+function parseSmashHeroes(
   stats: Record<string, unknown>,
 ): SmashHeroesStats | null;
 ```
 
-Returns `null` when `stats` is not a non-null object. Otherwise it always returns a fully-populated `SmashHeroesStats`; absent numeric fields default to `0`, absent strings to `""`, absent booleans to `false`, absent dates to `null`, and absent collections to empty arrays/records.
+### Null / empty behavior
+
+`parseSmashHeroes` returns `null` when `stats` is not an object, is `null`, or is an empty object. Otherwise it returns a fully-populated `SmashHeroesStats` object built with the safe readers used throughout the module:
+
+- Missing or non-number values become `0`.
+- Missing or non-string values become `""`.
+- Boolean fields are `true` only when the raw value is exactly `true`, otherwise `false`.
+- `Date | null` fields are `null` when the raw value is absent or not a positive epoch-ms number.
+- Missing nested objects are treated as empty objects, so every nested block is still present and populated with the defaults above.
+- `packages` becomes an empty array (`[]`) when the raw value is missing or not an array (only string entries are kept).
+
+The dynamic maps (`votes`, `classes`, `heroes`, and each hero's `abilities`) contain only the keys present in the raw data, so they may be empty objects when no data exists.
+
+---
+
+## Returned type tree
 
 ### SmashHeroesStats
 
-The top-level returned object.
+The root object returned by `parseSmashHeroes`.
 
 ```ts
-export interface SmashHeroesStats {
+interface SmashHeroesStats {
   readonly coins: number;
   readonly smashLevel: number;
   readonly smashLevelTotal: number;
@@ -59,58 +74,72 @@ export interface SmashHeroesStats {
   readonly leaderboardSettings: SmashHeroesLeaderboardSettings;
   readonly heroLevelBoosterActive: SmashHeroesHeroLevelBooster;
   readonly votes: Readonly<Record<string, number>>;
+  readonly combatTracker: boolean;
+  readonly ignoreSmashLevel: boolean;
   readonly normal: SmashHeroesModeStats;
   readonly twoVsTwo: SmashHeroesModeStats;
   readonly threeVsThree: SmashHeroesModeStats;
   readonly teams: SmashHeroesModeStats;
+  readonly threeVsThreeLegacy: SmashHeroesModeStats;
+  readonly teamsLegacy: SmashHeroesModeStats;
   readonly monthly: SmashHeroesPeriodPair;
   readonly weekly: SmashHeroesPeriodPair;
   readonly heroes: Readonly<Record<string, SmashHeroesHeroStats>>;
 }
 ```
 
-| Field                         | Raw key                          | Notes                                                  |
-| ----------------------------- | -------------------------------- | ------------------------------------------------------ |
-| `coins`                       | `coins`                          | Smash Heroes coin balance.                             |
-| `smashLevel`                  | `smashLevel`                     | Current smash level.                                   |
-| `smashLevelTotal`             | `smash_level_total`              | Total smash level.                                     |
-| `winStreak`                   | `win_streak`                     | Current win streak.                                    |
-| `activeClass`                 | `active_class`                   | Currently selected class/hero.                         |
-| `quits`                       | `quits`                          | Number of games quit.                                  |
-| `smashPlayStreak`             | `smash_play_streak`              | Current play streak.                                   |
-| `expiredBooster`              | `expired_booster`                | True only when the raw value is exactly `true`.        |
-| `expBoosterPurchases10Plays`  | `expBooster_purchases_10_plays`  | XP booster purchases (10 plays).                       |
-| `expBoosterPurchases30Plays`  | `expBooster_purchases_30_plays`  | XP booster purchases (30 plays).                       |
-| `expBoosterPurchases50Plays`  | `expBooster_purchases_50_plays`  | XP booster purchases (50 plays).                       |
-| `expBoosterPurchases100Plays` | `expBooster_purchases_100_plays` | XP booster purchases (100 plays).                      |
-| `friendsFirstGame`            | `FRIENDS_firstGame`              | Parsed `Date` or `null`.                               |
-| `friendsGamesDay`             | `FRIENDS_gamesDay`               | Friends games played today.                            |
-| `oneVJuanFirstGame`           | `ONE_V_JUAN_firstGame`           | Parsed `Date` or `null`.                               |
-| `oneVJuanGamesDay`            | `ONE_V_JUAN_gamesDay`            | 1v1 (Juan) games played today.                         |
-| `assists`                     | `assists`                        | Overall assists.                                       |
-| `assistsNormal`               | `assists_normal`                 | Normal-mode assists.                                   |
-| `smashed`                     | `smashed`                        | Times this player smashed others.                      |
-| `smasher`                     | `smasher`                        | Times this player was smashed.                         |
-| `damageDealt`                 | `damage_dealt`                   | Total damage dealt.                                    |
-| `packages`                    | `packages`                       | Owned cosmetic/package ids (string entries only).      |
-| `classes`                     | `classes`                        | Map of class name to ownership boolean.                |
-| `votes`                       | `votes_*`                        | Map of map name (suffix after `votes_`) to vote count. |
-| `normal`                      | `*` (no suffix)                  | Per-mode stats; see `SmashHeroesModeStats`.            |
-| `twoVsTwo`                    | `*_2v2`                          | Per-mode stats.                                        |
-| `threeVsThree`                | `*_3v3`                          | Per-mode stats.                                        |
-| `teams`                       | `*_teams`                        | Per-mode stats.                                        |
-| `monthly`                     | `*_monthly_a` / `*_monthly_b`    | Period pair; see `SmashHeroesPeriodPair`.              |
-| `weekly`                      | `*_weekly_a` / `*_weekly_b`      | Period pair.                                           |
-| `heroes`                      | `class_stats` + per-hero keys    | Map of hero name to `SmashHeroesHeroStats`.            |
+| Field                                   | Notes                                                                  |
+| --------------------------------------- | ---------------------------------------------------------------------- |
+| `coins`                                 | Raw `coins`.                                                           |
+| `smashLevel`                            | Raw `smashLevel`.                                                      |
+| `smashLevelTotal`                       | Raw `smash_level_total`.                                               |
+| `winStreak`                             | Raw `win_streak`.                                                      |
+| `activeClass`                           | Raw `active_class`.                                                    |
+| `quits`                                 | Raw `quits`.                                                           |
+| `smashPlayStreak`                       | Raw `smash_play_streak`.                                               |
+| `expiredBooster`                        | Raw `expired_booster` (true only when exactly `true`).                 |
+| `expBoosterPurchases10Plays`            | Raw `expBooster_purchases_10_plays`.                                   |
+| `expBoosterPurchases30Plays`            | Raw `expBooster_purchases_30_plays`.                                   |
+| `expBoosterPurchases50Plays`            | Raw `expBooster_purchases_50_plays`.                                   |
+| `expBoosterPurchases100Plays`           | Raw `expBooster_purchases_100_plays`.                                  |
+| `friendsFirstGame`                      | Raw `FRIENDS_firstGame` as `Date`, or `null`.                          |
+| `friendsGamesDay`                       | Raw `FRIENDS_gamesDay`.                                                |
+| `oneVJuanFirstGame`                     | Raw `ONE_V_JUAN_firstGame` as `Date`, or `null`.                       |
+| `oneVJuanGamesDay`                      | Raw `ONE_V_JUAN_gamesDay`.                                             |
+| `assists` / `assistsNormal`             | Raw `assists` / `assists_normal`.                                      |
+| `smashed` / `smasher`                   | Raw `smashed` / `smasher`.                                             |
+| `damageDealt`                           | Raw `damage_dealt`.                                                    |
+| `friendWins` / `friendWinsNormal`       | Raw `friend_wins` / `friend_wins_normal`.                              |
+| `friendLosses` / `friendLossesNormal`   | Raw `friend_losses` / `friend_losses_normal`.                          |
+| `oneVOneWins` / `oneVOneWinsNormal`     | Raw `one_v_one_wins` / `one_v_one_wins_normal`.                        |
+| `oneVOneLosses` / `oneVOneLossesNormal` | Raw `one_v_one_losses` / `one_v_one_losses_normal`.                    |
+| `packages`                              | Raw `packages`; string entries only.                                   |
+| `classes`                               | Map of class name to ownership boolean, from the raw `classes` object. |
+| `votes`                                 | Collected from keys matching `votes_<name>`; keyed by `<name>`.        |
+| `combatTracker`                         | Raw `combatTracker`.                                                   |
+| `ignoreSmashLevel`                      | Raw `ignoreSmashLevel`.                                                |
+| `normal`                                | Mode with suffix `normal` (e.g. `games_normal`).                       |
+| `twoVsTwo`                              | Mode with suffix `2v2` (e.g. `games_2v2`).                             |
+| `threeVsThree`                          | Mode with suffix `3v3` (e.g. `games_3v3`).                             |
+| `teams`                                 | Mode with suffix `teams` (e.g. `games_teams`).                         |
+| `threeVsThreeLegacy`                    | Legacy `3v3` mode with no separator (e.g. `games3v3`).                 |
+| `teamsLegacy`                           | Legacy `teams` mode with no separator (e.g. `gamesteams`).             |
+| `monthly`                               | Period pair from `monthly_a` / `monthly_b`.                            |
+| `weekly`                                | Period pair from `weekly_a` / `weekly_b`.                              |
+| `heroes`                                | Map of hero name to `SmashHeroesHeroStats`.                            |
 
 Hero names in `heroes` are collected from the keys of `class_stats` plus any top-level key matching `^(?:lastLevel|xp|pg|masterArmor)_(.+)$`, deduplicated and sorted by `localeCompare`.
 
+---
+
+## Per-mode stat types
+
 ### SmashHeroesModeStats
 
-Per-mode statistics for the base, `2v2`, `3v3`, and `teams` modes. Used by `normal`, `twoVsTwo`, `threeVsThree`, and `teams`.
+Per-mode statistics for the overall game. Used by `normal`, `twoVsTwo`, `threeVsThree`, `teams`, `threeVsThreeLegacy`, and `teamsLegacy`. Each field reads its base key with a mode-specific suffix; legacy modes use no separator between base and suffix.
 
 ```ts
-export interface SmashHeroesModeStats {
+interface SmashHeroesModeStats {
   readonly games: number;
   readonly wins: number;
   readonly losses: number;
@@ -122,12 +151,14 @@ export interface SmashHeroesModeStats {
 }
 ```
 
+Base keys: `games`, `wins`, `losses`, `kills`, `deaths`, `smashed`, `smasher`, `damage_dealt`.
+
 ### SmashHeroesPeriodPair
 
 A pair of period buckets (`a` and `b`) used by `monthly` and `weekly`.
 
 ```ts
-export interface SmashHeroesPeriodPair {
+interface SmashHeroesPeriodPair {
   readonly a: SmashHeroesPeriodStats;
   readonly b: SmashHeroesPeriodStats;
 }
@@ -135,10 +166,10 @@ export interface SmashHeroesPeriodPair {
 
 ### SmashHeroesPeriodStats
 
-Reduced statistics for a monthly/weekly bucket.
+Reduced statistics for a monthly/weekly bucket. Each field reads `<base>_<period>` (for example `games_monthly_a`).
 
 ```ts
-export interface SmashHeroesPeriodStats {
+interface SmashHeroesPeriodStats {
   readonly games: number;
   readonly wins: number;
   readonly losses: number;
@@ -146,36 +177,16 @@ export interface SmashHeroesPeriodStats {
 }
 ```
 
-### SmashHeroesLeaderboardSettings
+---
 
-Player leaderboard configuration, mapped from `leaderboardSettings`.
-
-```ts
-export interface SmashHeroesLeaderboardSettings {
-  readonly resetType: string;
-  readonly mode: string;
-}
-```
-
-### SmashHeroesHeroLevelBooster
-
-The active hero-level booster, mapped from `hero_level_booster_active`.
-
-```ts
-export interface SmashHeroesHeroLevelBooster {
-  readonly key: string;
-  readonly multiplier: number;
-  readonly value: number;
-  readonly plays: number;
-}
-```
+## Heroes
 
 ### SmashHeroesHeroStats
 
 Per-hero statistics. Keyed by hero name in `SmashHeroesStats.heroes`.
 
 ```ts
-export interface SmashHeroesHeroStats {
+interface SmashHeroesHeroStats {
   readonly hero: string;
   readonly lastLevel: number;
   readonly experience: number;
@@ -185,6 +196,8 @@ export interface SmashHeroesHeroStats {
   readonly twoVsTwo: SmashHeroesHeroModeStats;
   readonly threeVsThree: SmashHeroesHeroModeStats;
   readonly teams: SmashHeroesHeroModeStats;
+  readonly threeVsThreeLegacy: SmashHeroesHeroModeStats;
+  readonly teamsLegacy: SmashHeroesHeroModeStats;
   readonly friendWins: number;
   readonly friendWinsNormal: number;
   readonly friendLosses: number;
@@ -198,26 +211,32 @@ export interface SmashHeroesHeroStats {
 }
 ```
 
-| Field          | Raw source                       | Notes                                                                               |
-| -------------- | -------------------------------- | ----------------------------------------------------------------------------------- |
-| `hero`         | (key name)                       | The hero's identifier.                                                              |
-| `lastLevel`    | `lastLevel_<hero>`               | Last recorded hero level.                                                           |
-| `experience`   | `xp_<hero>`                      | Hero experience.                                                                    |
-| `prestige`     | `pg_<hero>`                      | Hero prestige.                                                                      |
-| `overall`      | `class_stats.<hero>` (no suffix) | Per-mode hero stats.                                                                |
-| `normal`       | `class_stats.<hero>` (`normal`)  | Per-mode hero stats.                                                                |
-| `twoVsTwo`     | `class_stats.<hero>` (`2v2`)     | Per-mode hero stats.                                                                |
-| `threeVsThree` | `class_stats.<hero>` (`3v3`)     | Per-mode hero stats.                                                                |
-| `teams`        | `class_stats.<hero>` (`teams`)   | Per-mode hero stats.                                                                |
-| `masterArmor`  | `masterArmor_<hero>`             | Whether master armor is owned.                                                      |
-| `abilities`    | `class_stats.<hero>.*`           | Each nested non-array object becomes a `SmashHeroesAbilityStats` keyed by its name. |
+| Field                                   | Notes                                                                                                          |
+| --------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `hero`                                  | The hero's identifier (the map key).                                                                           |
+| `lastLevel`                             | Raw `lastLevel_<hero>`.                                                                                        |
+| `experience`                            | Raw `xp_<hero>`.                                                                                               |
+| `prestige`                              | Raw `pg_<hero>`.                                                                                               |
+| `overall`                               | Per-mode hero stats from `class_stats.<hero>` with no suffix.                                                  |
+| `normal`                                | Per-mode hero stats with suffix `normal`.                                                                      |
+| `twoVsTwo`                              | Per-mode hero stats with suffix `2v2`.                                                                         |
+| `threeVsThree`                          | Per-mode hero stats with suffix `3v3`.                                                                         |
+| `teams`                                 | Per-mode hero stats with suffix `teams`.                                                                       |
+| `threeVsThreeLegacy`                    | Legacy `3v3` per-mode hero stats with no separator.                                                            |
+| `teamsLegacy`                           | Legacy `teams` per-mode hero stats with no separator.                                                          |
+| `friendWins` / `friendWinsNormal`       | From `class_stats.<hero>`: `friend_wins` / `friend_wins_normal`.                                               |
+| `friendLosses` / `friendLossesNormal`   | From `class_stats.<hero>`: `friend_losses` / `friend_losses_normal`.                                           |
+| `oneVOneWins` / `oneVOneWinsNormal`     | From `class_stats.<hero>`: `one_v_one_wins` / `one_v_one_wins_normal`.                                         |
+| `oneVOneLosses` / `oneVOneLossesNormal` | From `class_stats.<hero>`: `one_v_one_losses` / `one_v_one_losses_normal`.                                     |
+| `masterArmor`                           | Raw `masterArmor_<hero>`.                                                                                      |
+| `abilities`                             | Each nested non-array object under `class_stats.<hero>` becomes a `SmashHeroesAbilityStats` keyed by its name. |
 
 ### SmashHeroesHeroModeStats
 
-Per-mode statistics within a single hero. Used by the hero's `overall`, `normal`, `twoVsTwo`, `threeVsThree`, and `teams`.
+Per-mode statistics within a single hero. Used by the hero's `overall`, `normal`, `twoVsTwo`, `threeVsThree`, `teams`, `threeVsThreeLegacy`, and `teamsLegacy`.
 
 ```ts
-export interface SmashHeroesHeroModeStats {
+interface SmashHeroesHeroModeStats {
   readonly games: number;
   readonly wins: number;
   readonly losses: number;
@@ -230,30 +249,78 @@ export interface SmashHeroesHeroModeStats {
 }
 ```
 
+Base keys: `games`, `wins`, `losses`, `kills`, `deaths`, `smashed`, `smasher`, `damage_dealt`, `win_streak`.
+
 ### SmashHeroesAbilityStats
 
 Per-ability statistics broken down by mode. Keyed by ability name in `SmashHeroesHeroStats.abilities`.
 
 ```ts
-export interface SmashHeroesAbilityStats {
+interface SmashHeroesAbilityStats {
   readonly overall: SmashHeroesAbilityModeStats;
   readonly normal: SmashHeroesAbilityModeStats;
   readonly twoVsTwo: SmashHeroesAbilityModeStats;
   readonly threeVsThree: SmashHeroesAbilityModeStats;
   readonly teams: SmashHeroesAbilityModeStats;
+  readonly threeVsThreeLegacy: SmashHeroesAbilityModeStats;
+  readonly teamsLegacy: SmashHeroesAbilityModeStats;
 }
 ```
+
+`overall` reads with no suffix; `normal`/`twoVsTwo`/`threeVsThree`/`teams` use suffixes `normal`/`2v2`/`3v3`/`teams`; `threeVsThreeLegacy` and `teamsLegacy` use the `3v3`/`teams` suffixes with no separator.
 
 ### SmashHeroesAbilityModeStats
 
 Per-mode statistics for a single ability.
 
 ```ts
-export interface SmashHeroesAbilityModeStats {
+interface SmashHeroesAbilityModeStats {
   readonly kills: number;
   readonly smashed: number;
   readonly smasher: number;
   readonly damageDealt: number;
 }
 ```
+
+Base keys: `kills`, `smashed`, `smasher`, `damage_dealt`.
+
+---
+
+## Settings and boosters
+
+### SmashHeroesLeaderboardSettings
+
+Read from the raw `leaderboardSettings` object.
+
+```ts
+interface SmashHeroesLeaderboardSettings {
+  readonly resetType: string;
+  readonly mode: string;
+}
+```
+
+| Field       | Raw key     |
+| ----------- | ----------- |
+| `resetType` | `resetType` |
+| `mode`      | `mode`      |
+
+### SmashHeroesHeroLevelBooster
+
+The active hero-level booster, read from the raw `hero_level_booster_active` object.
+
+```ts
+interface SmashHeroesHeroLevelBooster {
+  readonly key: string;
+  readonly multiplier: number;
+  readonly value: number;
+  readonly plays: number;
+}
+```
+
+| Field        | Raw key      |
+| ------------ | ------------ |
+| `key`        | `key`        |
+| `multiplier` | `multiplier` |
+| `value`      | `value`      |
+| `plays`      | `plays`      |
 

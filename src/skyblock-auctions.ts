@@ -11,6 +11,7 @@ export interface SkyBlockAuctionBid {
 }
 
 export interface SkyBlockAuction {
+  readonly id: string;
   readonly uuid: string;
   readonly auctioneer: string;
   readonly profileId: string;
@@ -83,6 +84,7 @@ function parseBids(value: unknown): SkyBlockAuctionBid[] {
 export function parseAuction(raw: Record<string, unknown>): SkyBlockAuction {
   const itemBytes = str(raw, "item_bytes");
   return {
+    id: str(raw, "_id"),
     uuid: str(raw, "uuid") || str(raw, "auction_id"),
     auctioneer: str(raw, "auctioneer") || str(raw, "seller"),
     profileId: str(raw, "profile_id") || str(raw, "seller_profile"),

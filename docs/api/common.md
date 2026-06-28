@@ -1,71 +1,60 @@
-# Helpers
+# Common
 
-Low-level, safe field-reader helpers used internally by the `@breezil/hypixel-parsers` parsers to read values out of raw Hypixel API JSON objects without throwing on missing or mistyped fields. They perform no computation beyond type-coercion guards and mirror the raw data exactly.
-
-All helpers accept a possibly-`undefined` source object and a string `key`, and each returns a safe default when the field is absent or has an unexpected type. None of these are parse functions; they are the primitive accessors the parsers are built on.
+The common module provides the safe field-reader helpers that the rest of the library is built on. Every parser reads raw Hypixel API JSON through these functions, so the defaults defined here are the defaults the whole library relies on. Each helper takes a possibly-`undefined` source object and a string key, performs no computation beyond a type guard, never throws, and returns a well-defined fallback when the value is missing or has the wrong type.
 
 ## num
 
-Safe numeric read from a raw Hypixel object. Returns the value when it is a `number`, otherwise `0`.
+Reads a numeric field from a raw object.
 
 ```ts
-export function num(
-  obj: Record<string, unknown> | undefined,
-  key: string,
-): number;
+function num(obj: Record<string, unknown> | undefined, key: string): number;
 ```
 
-Null/empty behavior: returns `0` when `obj` is `undefined`, when `key` is missing, or when the value is not a `number`.
+Returns `obj[key]` when it is a `number`. Returns `0` when `obj` is `undefined`, when `key` is missing, or when the value is not a `number`.
 
 ## str
 
-Safe string read. Returns the value when it is a `string`, otherwise `""`.
+Reads a string field from a raw object.
 
 ```ts
-export function str(
-  obj: Record<string, unknown> | undefined,
-  key: string,
-): string;
+function str(obj: Record<string, unknown> | undefined, key: string): string;
 ```
 
-Null/empty behavior: returns `""` when `obj` is `undefined`, when `key` is missing, or when the value is not a `string`.
+Returns `obj[key]` when it is a `string`. Returns `""` when `obj` is `undefined`, when `key` is missing, or when the value is not a `string`.
 
 ## bool
 
-Safe boolean read. Returns `true` only when the value is strictly equal to `true`.
+Reads a boolean field from a raw object.
 
 ```ts
-export function bool(
-  obj: Record<string, unknown> | undefined,
-  key: string,
-): boolean;
+function bool(obj: Record<string, unknown> | undefined, key: string): boolean;
 ```
 
-Null/empty behavior: returns `false` for `undefined`, missing keys, and any value that is not exactly `true` (including truthy non-boolean values).
+Returns `true` only when `obj[key]` is strictly equal to `true`. Returns `false` in every other case — `undefined` object, missing key, `false`, or any non-`true` value (including truthy non-booleans such as `1` or `"true"`).
 
 ## obj
 
-Reads a nested object, or returns an empty object so callers can keep reading safely. Returns the value only when it is a non-null, non-array object.
+Reads a nested object field from a raw object, falling back to an empty object so callers can keep reading safely.
 
 ```ts
-export function obj(
+function obj(
   parent: Record<string, unknown> | undefined,
   key: string,
 ): Record<string, unknown>;
 ```
 
-Null/empty behavior: returns `{}` when `parent` is `undefined`, when `key` is missing, when the value is `null`, when the value is an array, or when the value is not an object.
+Returns `parent[key]` when it is a non-null, non-array `object`. Returns a new empty object (`{}`) when `parent` is `undefined`, when `key` is missing, when the value is `null`, when the value is an array, or when the value is any non-object.
 
 ## date
 
-Reads an epoch-milliseconds field as a `Date`, or `null` when absent. Returns a `Date` only when the value is a `number` greater than `0`.
+Reads an epoch-milliseconds field from a raw object as a `Date`.
 
 ```ts
-export function date(
+function date(
   obj: Record<string, unknown> | undefined,
   key: string,
 ): Date | null;
 ```
 
-Null/empty behavior: returns `null` when `obj` is `undefined`, when `key` is missing, when the value is not a `number`, or when the value is `<= 0`.
+Returns `new Date(obj[key])` when `obj[key]` is a `number` greater than `0`. Returns `null` when `obj` is `undefined`, when `key` is missing, when the value is not a `number`, or when the value is `<= 0`.
 

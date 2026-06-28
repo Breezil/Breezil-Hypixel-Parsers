@@ -1,21 +1,38 @@
 # The Pit
 
-Parser for a player's Pit statistics from the Hypixel API. Like every parser in `@breezil/hypixel-parsers`, it is strict-raw: it mirrors the raw API fields one-for-one and performs no computation, no derived values, and no aggregation.
+The Pit module exposes a single parser, `parsePit`, which mirrors the raw `stats.Pit` block of the Hypixel player API field-for-field into readonly, fully-typed objects. Every value below is read straight from the raw JSON with no computation, no ratios, and no derived totals.
 
 ## parsePit
 
 Parses a player's Pit stats (`stats.Pit`) into a typed object.
 
 ```ts
-export function parsePit(stats: Record<string, unknown>): PitStats | null;
+function parsePit(stats: Record<string, unknown>): PitStats | null;
 ```
 
-Returns `null` when `stats.Pit` is absent, is not an object, or is an array. Otherwise it returns a `PitStats` object. The top-level `combat` block is read from the raw `pit_stats_ptl` key, and `profile` is read from the raw `profile` key.
+### Null / empty behavior
+
+`parsePit` returns `null` when `stats.Pit` is absent, is not an object, or is an array. Otherwise it returns a fully-populated `PitStats` object. The top-level `combat` block is read from the raw `pit_stats_ptl` key and `profile` from the raw `profile` key. Missing fields are filled in by the safe readers used throughout the module:
+
+- Missing or non-number values become `0`.
+- Missing or non-string values become `""`.
+- Boolean fields are `true` only when the raw value is exactly `true`, otherwise `false`.
+- Missing nested objects are treated as empty objects, so every nested block is still present and populated with the defaults above.
+- Array fields become empty arrays (`[]`) when absent; typed arrays are filtered to the matching primitive type, and object arrays keep only object entries.
+- `contract` is `null` when the raw `contract` is absent or not an object; `issuer` on a bounty is `null` when not a string.
+
+The dynamic maps (`leaderboardStats`, `itemsLastBuy`, `goldStackStreaks`, `xpStackStreaks`, `shopsThrottle`, and each contract's `requirements` / `progress`) contain only the keys present in the raw data, so they may be empty objects when no data exists. Indexed array-style keys (for example `selected_perk_0`, `selected_perk_1`) are collected in numeric order.
+
+---
+
+## Returned type tree
 
 ### PitStats
 
+The root object returned by `parsePit`.
+
 ```ts
-export interface PitStats {
+interface PitStats {
   readonly profile: PitProfile;
   readonly combat: PitCombatStats;
   readonly statsMove1: number;
@@ -32,10 +49,10 @@ export interface PitStats {
 
 ### PitProfile
 
-The main profile block, read from `Pit.profile`. String/number/boolean fields default to their type's zero value when absent. Array-style indexed keys (for example `selected_perk_0`, `selected_perk_1`) are collected in numeric order into the corresponding arrays.
+The main profile block, read from `Pit.profile`. Array-style indexed keys (for example `selected_perk_0`, `selected_perk_1`) are collected in numeric order into the corresponding arrays.
 
 ```ts
-export interface PitProfile {
+interface PitProfile {
   readonly xp: number;
   readonly lastPassiveXp: number;
   readonly zeroPointTwoXp: number;
@@ -49,6 +66,13 @@ export interface PitProfile {
   readonly cheapMilk: boolean;
   readonly disableSpawnItems: boolean;
   readonly refundedGoldenPickaxe: boolean;
+  readonly apolloEnabled: boolean;
+  readonly dropConfirmDisabled: boolean;
+  readonly hatGlintEnabled: boolean;
+  readonly fishFishedToday: number;
+  readonly lastFishFished: number;
+  readonly lastLycanthropy: number;
+  readonly reconessenceDay: number;
   readonly lastSave: number;
   readonly lastContract: number;
   readonly lastMidfightDisconnect: number;
@@ -61,6 +85,10 @@ export interface PitProfile {
   readonly selectedKillstreaks: readonly string[];
   readonly cashDuringPrestige: readonly number[];
   readonly hotbarFavorites: readonly number[];
+  readonly recentUberstreaks: readonly number[];
+  readonly goldStackStreaks: Readonly<Record<string, number>>;
+  readonly xpStackStreaks: Readonly<Record<string, number>>;
+  readonly shopsThrottle: Readonly<Record<string, PitShopThrottle>>;
   readonly chatOptions: PitChatOptions;
   readonly genesis: PitGenesis;
   readonly kingQuest: PitKingQuest;
@@ -69,6 +97,7 @@ export interface PitProfile {
   readonly prestiges: readonly PitPrestige[];
   readonly bounties: readonly PitBounty[];
   readonly goldTransactions: readonly PitGoldTransaction[];
+  readonly contract: PitEndedContract | null;
   readonly endedContracts: readonly PitEndedContract[];
   readonly contractChoices: readonly unknown[];
   readonly outgoingOffers: readonly unknown[];
@@ -104,6 +133,13 @@ export interface PitProfile {
 | `cheapMilk`                    | `cheap_milk`                      |                                                                                     |
 | `disableSpawnItems`            | `disable_spawn_items`             |                                                                                     |
 | `refundedGoldenPickaxe`        | `refunded_golden_pickaxe`         |                                                                                     |
+| `apolloEnabled`                | `apollo_enabled`                  |                                                                                     |
+| `dropConfirmDisabled`          | `drop_confirm_disabled`           |                                                                                     |
+| `hatGlintEnabled`              | `hat_glint_enabled`               |                                                                                     |
+| `fishFishedToday`              | `fish_fished_today`               |                                                                                     |
+| `lastFishFished`               | `last_fish_fished`                |                                                                                     |
+| `lastLycanthropy`              | `last_lycanthropy`                |                                                                                     |
+| `reconessenceDay`              | `reconessence_day`                |                                                                                     |
 | `lastSave`                     | `last_save`                       |                                                                                     |
 | `lastContract`                 | `last_contract`                   |                                                                                     |
 | `lastMidfightDisconnect`       | `last_midfight_disconnect`        |                                                                                     |
@@ -116,6 +152,10 @@ export interface PitProfile {
 | `selectedKillstreaks`          | `selected_killstreak_<n>`         | Indexed string keys collected in numeric order.                                     |
 | `cashDuringPrestige`           | `cash_during_prestige_<n>`        | Indexed number keys collected in numeric order.                                     |
 | `hotbarFavorites`              | `hotbar_favorites`                | Filtered to number entries.                                                         |
+| `recentUberstreaks`            | `recent_uberstreaks`              | Filtered to number entries.                                                         |
+| `goldStackStreaks`             | `gold_stack_streak_<n>`           | Indexed numeric keys; `<n>` suffix → value map.                                     |
+| `xpStackStreaks`               | `xp_stack_streak_<n>`             | Indexed numeric keys; `<n>` suffix → value map.                                     |
+| `shopsThrottle`                | `shops_throttle`                  | `PitShopThrottle` map; non-object entries dropped.                                  |
 | `chatOptions`                  | `chat_option_*`                   | Parsed `PitChatOptions` block.                                                      |
 | `genesis`                      | `genesis_*`                       | Parsed `PitGenesis` block.                                                          |
 | `kingQuest`                    | `king_quest`                      | Parsed `PitKingQuest` block.                                                        |
@@ -124,6 +164,7 @@ export interface PitProfile {
 | `prestiges`                    | `prestiges`                       | Array of `PitPrestige`.                                                             |
 | `bounties`                     | `bounties`                        | Array of `PitBounty`.                                                               |
 | `goldTransactions`             | `gold_transactions`               | Array of `PitGoldTransaction`.                                                      |
+| `contract`                     | `contract`                        | Active contract as `PitEndedContract`, or `null` when absent / not an object.       |
 | `endedContracts`               | `ended_contracts`                 | Array of `PitEndedContract`.                                                        |
 | `contractChoices`              | `contract_choices`                | Passed through unparsed; empty array when not an array.                             |
 | `outgoingOffers`               | `outgoing_offers`                 | Passed through unparsed; empty array when not an array.                             |
@@ -147,7 +188,7 @@ export interface PitProfile {
 Booleans read from the `chat_option_*` keys of the profile.
 
 ```ts
-export interface PitChatOptions {
+interface PitChatOptions {
   readonly bounties: boolean;
   readonly killFeed: boolean;
   readonly minorEvents: boolean;
@@ -173,7 +214,7 @@ export interface PitChatOptions {
 Values read from the `genesis_*` keys of the profile.
 
 ```ts
-export interface PitGenesis {
+interface PitGenesis {
   readonly allegiance: string;
   readonly allegianceTime: number;
   readonly permaAngel: number;
@@ -205,7 +246,7 @@ export interface PitGenesis {
 Read from the `king_quest` object of the profile.
 
 ```ts
-export interface PitKingQuest {
+interface PitKingQuest {
   readonly kills: number;
   readonly renown: number;
   readonly lastCompleted: number;
@@ -220,12 +261,28 @@ export interface PitKingQuest {
 | `lastCompleted` | `king_quest.last_completed` |
 | `lastAccepted`  | `king_quest.last_accepted`  |
 
+### PitShopThrottle
+
+One entry per key in the profile's `shops_throttle` object.
+
+```ts
+interface PitShopThrottle {
+  readonly count: number;
+  readonly lastEpochDay: number;
+}
+```
+
+| Field          | Raw source     |
+| -------------- | -------------- |
+| `count`        | `count`        |
+| `lastEpochDay` | `lastEpochDay` |
+
 ### PitPrestige
 
 One entry per object in the `prestiges` array.
 
 ```ts
-export interface PitPrestige {
+interface PitPrestige {
   readonly index: number;
   readonly xpOnPrestige: number;
   readonly timestamp: number;
@@ -243,7 +300,7 @@ export interface PitPrestige {
 One entry per object in the `bounties` array.
 
 ```ts
-export interface PitBounty {
+interface PitBounty {
   readonly amount: number;
   readonly remainingTicks: number;
   readonly timestamp: number;
@@ -263,7 +320,7 @@ export interface PitBounty {
 One entry per object in the `gold_transactions` array.
 
 ```ts
-export interface PitGoldTransaction {
+interface PitGoldTransaction {
   readonly amount: number;
   readonly timestamp: number;
 }
@@ -276,10 +333,10 @@ export interface PitGoldTransaction {
 
 ### PitEndedContract
 
-One entry per object in the `ended_contracts` array.
+Used both for each object in the `ended_contracts` array and for the active `contract` field.
 
 ```ts
-export interface PitEndedContract {
+interface PitEndedContract {
   readonly difficulty: string;
   readonly goldReward: number;
   readonly chunkOfVilesReward: number;
@@ -307,7 +364,7 @@ export interface PitEndedContract {
 One entry per object in an unlocks array (`unlocks`, `renown_unlocks`, and each indexed `unlocks_<n>`).
 
 ```ts
-export interface PitUnlock {
+interface PitUnlock {
   readonly tier: number;
   readonly acquireDate: number;
   readonly key: string;
@@ -325,7 +382,7 @@ export interface PitUnlock {
 A container with a numeric type and decoded NBT items. The raw `data` (a base64 string or a byte array) is decoded into `NbtItem` entries; a byte array is first converted to base64 before decoding.
 
 ```ts
-export interface PitInventory {
+interface PitInventory {
   readonly type: number;
   readonly items: readonly NbtItem[];
 }
@@ -341,7 +398,7 @@ export interface PitInventory {
 Combat counters read from `Pit.pit_stats_ptl`. Every field is a raw numeric value defaulting to `0` when absent.
 
 ```ts
-export interface PitCombatStats {
+interface PitCombatStats {
   readonly kills: number;
   readonly deaths: number;
   readonly assists: number;
@@ -363,6 +420,7 @@ export interface PitCombatStats {
   readonly obsidianBroken: number;
   readonly cashEarned: number;
   readonly goldFromFarming: number;
+  readonly goldFromSellingFish: number;
   readonly chatMessages: number;
   readonly contractsStarted: number;
   readonly contractsCompleted: number;
@@ -398,6 +456,7 @@ export interface PitCombatStats {
   readonly luckyDiamondPieces: number;
   readonly sewerTreasuresFound: number;
   readonly wheatFarmed: number;
+  readonly hiddenJewelTriggers: number;
 }
 ```
 
@@ -424,6 +483,7 @@ export interface PitCombatStats {
 | `obsidianBroken`        | `obsidian_broken`          |
 | `cashEarned`            | `cash_earned`              |
 | `goldFromFarming`       | `gold_from_farming`        |
+| `goldFromSellingFish`   | `gold_from_selling_fish`   |
 | `chatMessages`          | `chat_messages`            |
 | `contractsStarted`      | `contracts_started`        |
 | `contractsCompleted`    | `contracts_completed`      |
@@ -459,4 +519,5 @@ export interface PitCombatStats {
 | `luckyDiamondPieces`    | `lucky_diamond_pieces`     |
 | `sewerTreasuresFound`   | `sewer_treasures_found`    |
 | `wheatFarmed`           | `wheat_farmed`             |
+| `hiddenJewelTriggers`   | `hidden_jewel_triggers`    |
 

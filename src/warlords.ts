@@ -46,6 +46,7 @@ export interface WarlordsWeapon {
   readonly movement: number;
   readonly crafted: boolean;
   readonly playStreak: boolean;
+  readonly unlocked: boolean;
   readonly upgradeMax: number;
   readonly upgradeTimes: number;
 }
@@ -57,6 +58,7 @@ export interface WarlordsCaptureTheFlagStats {
   readonly winsTeamB: number;
   readonly winsBlu: number;
   readonly winsRed: number;
+  readonly weeklyWinsTeamA: number;
   readonly flagConquerSelf: number;
   readonly flagConquerTeam: number;
   readonly flagReturns: number;
@@ -69,6 +71,7 @@ export interface WarlordsDominationStats {
   readonly winsTeamB: number;
   readonly winsBlu: number;
   readonly winsRed: number;
+  readonly weeklyWinsTeamA: number;
   readonly pointCaptures: number;
   readonly pointDefends: number;
   readonly totalScore: number;
@@ -91,22 +94,16 @@ export interface WarlordsModes {
 
 export interface WarlordsLifeLeech {
   readonly total: number;
-  readonly warrior: number;
-  readonly berserker: number;
+  readonly byClass: Readonly<Record<string, number>>;
 }
 
 export interface WarlordsDamageDelayed {
   readonly total: number;
-  readonly shaman: number;
-  readonly spiritguard: number;
+  readonly byClass: Readonly<Record<string, number>>;
 }
 
 export interface WarlordsAbilities {
-  readonly arcaneShatter: number;
-  readonly burstChain: number;
-  readonly dimensionalWarp: number;
-  readonly flameBreath: number;
-  readonly meteor: number;
+  readonly [ability: string]: number;
 }
 
 export interface WarlordsCrafting {
@@ -127,10 +124,13 @@ export interface WarlordsCrafting {
   readonly upgradePlayStreak: number;
   readonly upgradePlayStreakEpic: number;
   readonly upgradePlayStreakLegendary: number;
+  readonly upgradeRandomLegendary: number;
   readonly unlockCrafted: number;
   readonly unlockCraftedLegendary: number;
   readonly unlockPlayStreak: number;
   readonly unlockPlayStreakLegendary: number;
+  readonly unlockRandom: number;
+  readonly unlockRandomLegendary: number;
 }
 
 export interface WarlordsRepair {
@@ -153,10 +153,12 @@ export interface WarlordsSalvage {
 
 export interface WarlordsChatOptions {
   readonly damage: string;
+  readonly energy: string;
   readonly errorMessages: string;
   readonly heal: string;
   readonly killFeed: string;
   readonly misc: string;
+  readonly shouts: string;
 }
 
 export interface WarlordsLeaderboardSettings {
@@ -173,6 +175,7 @@ export interface WarlordsPrivateGames {
   readonly horseSpeed: string;
   readonly health: string;
   readonly points: string;
+  readonly specializations: string;
 }
 
 const CLASSES = [
@@ -266,8 +269,16 @@ export interface WarlordsStats {
   readonly autoStrikeMode: boolean;
   readonly energyPowerups: boolean;
   readonly simplifiedResourcePack: boolean;
+  readonly displayDamage: boolean;
+  readonly showChatTitles: boolean;
+  readonly newControlEnable: number;
+  readonly newControlDisable: number;
+  readonly repairSalvageCommon: boolean;
+  readonly repairSalvageRare: boolean;
+  readonly repairSalvageEpic: boolean;
   readonly lifeLeech: WarlordsLifeLeech;
   readonly damageDelayed: WarlordsDamageDelayed;
+  readonly woundingStrike: Readonly<Record<string, number>>;
   readonly abilities: WarlordsAbilities;
   readonly crafting: WarlordsCrafting;
   readonly repair: WarlordsRepair;
@@ -341,6 +352,7 @@ function parseWeapon(raw: Record<string, unknown>): WarlordsWeapon {
     movement: num(raw, "movement"),
     crafted: bool(raw, "crafted"),
     playStreak: bool(raw, "playStreak"),
+    unlocked: bool(raw, "unlocked"),
     upgradeMax: num(raw, "upgradeMax"),
     upgradeTimes: num(raw, "upgradeTimes"),
   };
@@ -411,6 +423,88 @@ function parseStringList(value: unknown): readonly string[] {
     : [];
 }
 
+const ABILITIES = [
+  "accelerated_spike",
+  "acid_rain",
+  "arcane_recluse",
+  "arcane_reflection",
+  "arcane_shatter",
+  "arm_of_the_almighty",
+  "augmented_chains",
+  "berserkers_fury",
+  "blade_of_willpower",
+  "blizzard_breath",
+  "blood_frenzy",
+  "burst_chain",
+  "chilly_aura",
+  "clairvoyance",
+  "devils_debt",
+  "dimensional_warp",
+  "divine_effulgence",
+  "divine_purification",
+  "divine_vindication",
+  "earthbound_infusion",
+  "electromagnetic_chains",
+  "eye_of_the_storm",
+  "fervent_force",
+  "flame_breath",
+  "frost_missile",
+  "galvanized_spark",
+  "greater_sacrality",
+  "hammer_of_judgement",
+  "healing_link",
+  "heroic_intervention",
+  "lightspeed_infusion",
+  "lustrous_crown",
+  "megalithic_boulder",
+  "meteor",
+  "mighty_fists",
+  "one_man_army",
+  "orbs_of_life",
+  "permeating_link",
+  "piercing_radiance",
+  "rallying_presence",
+  "reckless_ascent",
+  "seismic_shift",
+  "seraphim_shield",
+  "smothering_soulbind",
+  "solitary_resistance",
+  "sovereign_solitude",
+  "spiritual_deflection",
+  "steadfast_warp",
+  "symphonic_windfury",
+  "totemic_boon",
+  "transistor",
+  "typhoon_bolt",
+  "undying_steed",
+  "vigorous_infusion",
+  "vitality_boost",
+  "warding_wrath",
+  "wrath_of_the_fallen",
+  "zealous_mark",
+] as const;
+
+function parseAbilities(warlords: Record<string, unknown>): WarlordsAbilities {
+  const result: Record<string, number> = {};
+  for (const ability of ABILITIES) {
+    result[ability] = num(warlords, ability);
+  }
+  return result;
+}
+
+function collectPrefixed(
+  warlords: Record<string, unknown>,
+  prefix: string,
+): Readonly<Record<string, number>> {
+  const result: Record<string, number> = {};
+  for (const key of Object.keys(warlords)) {
+    if (key.startsWith(prefix)) {
+      result[key.slice(prefix.length)] = num(warlords, key);
+    }
+  }
+  return result;
+}
+
 /** Parses a player's Warlords stats (`stats.Battleground`) into a typed object. */
 export function parseWarlords(
   stats: Record<string, unknown>,
@@ -462,23 +556,23 @@ export function parseWarlords(
     autoStrikeMode: bool(stats, "autostrikemode"),
     energyPowerups: bool(stats, "energyPowerups"),
     simplifiedResourcePack: bool(stats, "simplifiedresourcepack"),
+    displayDamage: bool(stats, "display_damage"),
+    showChatTitles: bool(stats, "show_chat_titles"),
+    newControlEnable: num(stats, "newcontrol_enable"),
+    newControlDisable: num(stats, "newcontrol_disable"),
+    repairSalvageCommon: bool(stats, "repair_salvage_common"),
+    repairSalvageRare: bool(stats, "repair_salvage_rare"),
+    repairSalvageEpic: bool(stats, "repair_salvage_epic"),
     lifeLeech: {
       total: num(stats, "life_leeched"),
-      warrior: num(stats, "life_leeched_warrior"),
-      berserker: num(stats, "life_leeched_berserker"),
+      byClass: collectPrefixed(stats, "life_leeched_"),
     },
     damageDelayed: {
       total: num(stats, "damage_delayed"),
-      shaman: num(stats, "damage_delayed_shaman"),
-      spiritguard: num(stats, "damage_delayed_spiritguard"),
+      byClass: collectPrefixed(stats, "damage_delayed_"),
     },
-    abilities: {
-      arcaneShatter: num(stats, "arcane_shatter"),
-      burstChain: num(stats, "burst_chain"),
-      dimensionalWarp: num(stats, "dimensional_warp"),
-      flameBreath: num(stats, "flame_breath"),
-      meteor: num(stats, "meteor"),
-    },
+    woundingStrike: collectPrefixed(stats, "wounding_strike_"),
+    abilities: parseAbilities(stats),
     crafting: {
       crafted: num(stats, "crafted"),
       craftedRare: num(stats, "crafted_rare"),
@@ -497,10 +591,13 @@ export function parseWarlords(
       upgradePlayStreak: num(stats, "upgrade_playstreak"),
       upgradePlayStreakEpic: num(stats, "upgrade_playstreak_epic"),
       upgradePlayStreakLegendary: num(stats, "upgrade_playstreak_legendary"),
+      upgradeRandomLegendary: num(stats, "upgrade_random_legendary"),
       unlockCrafted: num(stats, "unlock_crafted"),
       unlockCraftedLegendary: num(stats, "unlock_crafted_legendary"),
       unlockPlayStreak: num(stats, "unlock_playstreak"),
       unlockPlayStreakLegendary: num(stats, "unlock_playstreak_legendary"),
+      unlockRandom: num(stats, "unlock_random"),
+      unlockRandomLegendary: num(stats, "unlock_random_legendary"),
     },
     repair: {
       total: num(stats, "repaired"),
@@ -526,6 +623,7 @@ export function parseWarlords(
         winsTeamB: num(stats, "wins_capturetheflag_b"),
         winsBlu: num(stats, "wins_capturetheflag_blu"),
         winsRed: num(stats, "wins_capturetheflag_red"),
+        weeklyWinsTeamA: num(stats, "weekly_wins_capturetheflag_a"),
         flagConquerSelf: num(stats, "flag_conquer_self"),
         flagConquerTeam: num(stats, "flag_conquer_team"),
         flagReturns: num(stats, "flag_returns"),
@@ -537,6 +635,7 @@ export function parseWarlords(
         winsTeamB: num(stats, "wins_domination_b"),
         winsBlu: num(stats, "wins_domination_blu"),
         winsRed: num(stats, "wins_domination_red"),
+        weeklyWinsTeamA: num(stats, "weekly_wins_domination_a"),
         pointCaptures: num(stats, "dom_point_captures"),
         pointDefends: num(stats, "dom_point_defends"),
         totalScore: num(stats, "total_domination_score"),
@@ -555,10 +654,12 @@ export function parseWarlords(
     activeBoosts: parseActiveBoosts(stats),
     chatOptions: {
       damage: str(stats, "chat_option_damage"),
+      energy: str(stats, "chat_option_energy"),
       errorMessages: str(stats, "chat_option_error_messages"),
       heal: str(stats, "chat_option_heal"),
       killFeed: str(stats, "chat_option_kill_feed"),
       misc: str(stats, "chat_option_misc"),
+      shouts: str(stats, "chat_option_shouts"),
     },
     leaderboardSettings: {
       mode: str(leaderboard, "mode"),
@@ -573,6 +674,7 @@ export function parseWarlords(
       horseSpeed: str(privateGames, "horse_speed"),
       health: str(privateGames, "health"),
       points: str(privateGames, "points"),
+      specializations: str(privateGames, "specializations"),
     },
     weaponInventory: parseWeaponInventory(stats),
     boundWeapon: parseBoundWeapons(stats),

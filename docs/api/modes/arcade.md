@@ -1,26 +1,32 @@
 # Arcade
 
-Parser for the Hypixel Arcade lobby stats block (`stats.Arcade`). This module exposes a single parse function, `parseArcade`, whose returned tree mirrors the raw API field-for-field with no computed or derived values.
+The Arcade module exposes a single parser, `parseArcade`, which mirrors the raw `stats.Arcade` block of the Hypixel player API field-for-field into readonly, fully-typed objects. Every value below is read straight from the raw JSON with no computation, no ratios, and no derived totals.
 
 ## parseArcade
 
 Parses a player's Arcade stats (`stats.Arcade`) into a typed object.
 
 ```ts
-export function parseArcade(stats: Record<string, unknown>): ArcadeStats | null;
+function parseArcade(stats: Record<string, unknown>): ArcadeStats | null;
 ```
 
 ### Null / empty behavior
 
-`parseArcade` reads the `Arcade` object out of the passed `stats`. If that object has no keys (absent or empty), it returns `null`. Otherwise every field below is always present on the returned object: missing numeric fields default to `0`, missing booleans to `false`, missing strings to `""`, missing arrays to `[]`, and missing record/map blocks to `{}` (per the shared `num`/`bool`/`str`/`obj` helpers and the local list/map helpers).
+`parseArcade` reads the `Arcade` object out of the passed `stats`. If that object has no keys (absent or empty), it returns `null`. Otherwise every field below is always present on the returned object: missing numbers default to `0`, missing booleans to `false`, missing strings to `""`, missing string arrays to `[]`, and missing record/map blocks to `{}` (per the shared `num`/`bool`/`str`/`obj` helpers and the local list/map helpers).
 
-A few fields fall back to alternate raw keys:
+The dynamic record fields (`pixelPartyColorblind.customPresets`, `disasters.deaths`, `disasters.survived`, and the `inventoryLayout` of Mini Walls and Wool Hunt) contain only the keys present in the raw data, so they may be empty objects when no data exists.
+
+Some fields fall back to alternate raw keys:
 
 | Field           | Raw source                                          |
 | --------------- | --------------------------------------------------- |
 | `coins`         | `coins`, falling back to `tokens`                   |
 | `weeklyTokensA` | `weekly_tokens_a`, falling back to `weekly_coins_a` |
 | `weeklyTokensB` | `weekly_tokens_b`, falling back to `weekly_coins_b` |
+
+Boolean `options` fields use a string convention: each is `true` only when its raw `option_*` value equals the string `"on"`.
+
+---
 
 ## Returned type tree
 
@@ -29,7 +35,7 @@ A few fields fall back to alternate raw keys:
 The root object returned by `parseArcade`.
 
 ```ts
-export interface ArcadeStats {
+interface ArcadeStats {
   readonly coins: number;
   readonly monthlyTokensA: number;
   readonly monthlyTokensB: number;
@@ -53,6 +59,7 @@ export interface ArcadeStats {
   readonly meleeWeapon: string;
   readonly language: string;
   readonly shopSort: string;
+  readonly shopSortEnableOwnedFirst: boolean;
   readonly activeMovementTrail: string;
   readonly activeProjectileTrail: string;
   readonly activeVictoryDance: string;
@@ -62,6 +69,7 @@ export interface ArcadeStats {
   readonly packages: readonly string[];
   readonly leaderboardSettings: ArcadeLeaderboardSettings;
   readonly options: ArcadeOptions;
+  readonly privateGames: ArcadePrivateGamesSettings;
   readonly blockingDead: ArcadeBlockingDeadStats;
   readonly dragonWars: ArcadeDragonWarsStats;
   readonly pixelPainters: ArcadePixelPaintersStats;
@@ -89,6 +97,11 @@ export interface ArcadeStats {
   readonly hypixelSays: ArcadeHypixelSaysStats;
   readonly soccer: ArcadeSoccerStats;
   readonly throwOut: ArcadeThrowOutStats;
+  readonly grind: ArcadeGrindStats;
+  readonly splatoon: ArcadeSplatoonStats;
+  readonly volleyball: ArcadeVolleyballStats;
+  readonly spaceRaiders: ArcadeSpaceRaidersStats;
+  readonly pumpkinSpleef: ArcadePumpkinSpleefStats;
   readonly woolHunt: ArcadeWoolHuntStats;
   readonly zombies: ArcadeZombiesStats;
 }
@@ -103,23 +116,25 @@ Notable top-level fields:
 | `weeklyTokensA` / `weeklyTokensB`                                    | `weekly_tokens_a`/`weekly_coins_a`, `weekly_tokens_b`/`weekly_coins_b`     | Weekly token buckets.          |
 | `timestamp`                                                          | `time_stamp`                                                               | Raw timestamp value.           |
 | `lastTourneyAd`                                                      | `lastTourneyAd`                                                            | Raw value.                     |
-| `blood`, `flash`, `hints`, `music`                                   | `blood`, `flash`, `hints`, `music`                                         | Client toggle booleans.        |
 | `showInfoBook`                                                       | `showinfobook`                                                             | Boolean.                       |
-| `persistArcadeResourcePack`                                          | `persistArcadeResourcePack`                                                | String.                        |
 | `dec2016Achievements` / `dec2016Achievements2`                       | `dec2016_achievements` / `dec2016_achievements2`                           | Booleans.                      |
 | `bountyHead`, `meleeWeapon`                                          | `bounty_head`, `melee_weapon`                                              | Cosmetic / loadout strings.    |
-| `language`, `shopSort`                                               | `language`, `shop_sort`                                                    | Preference strings.            |
+| `shopSortEnableOwnedFirst`                                           | `shop_sort_enable_owned_first`                                             | Boolean.                       |
 | `activeMovementTrail`, `activeProjectileTrail`, `activeVictoryDance` | `active_movement_trail`, `active_projectile_trail`, `active_victory_dance` | Active cosmetic strings.       |
 | `pixelPartyHelmet`, `pixelPartyPants`                                | `pixelparty_helmet`, `pixelparty_pants`                                    | Cosmetic strings.              |
 | `pixelPartyMusicVolume`                                              | `pixel_party_music_volume`                                                 | Number.                        |
 | `packages`                                                           | `packages`                                                                 | List of owned package strings. |
 
+---
+
+## Settings
+
 ### ArcadeLeaderboardSettings
 
-Maps the raw `leaderboardSettings` object.
+Read from the raw `leaderboardSettings` object.
 
 ```ts
-export interface ArcadeLeaderboardSettings {
+interface ArcadeLeaderboardSettings {
   readonly mode: string;
   readonly resetType: string;
 }
@@ -127,20 +142,82 @@ export interface ArcadeLeaderboardSettings {
 
 ### ArcadeOptions
 
-Maps Arcade option toggles. `showTutorialBook` is `true` only when the raw `option_show_tutorial_book` value equals `"on"`.
+Arcade option toggles. Each field is `true` only when its raw `option_*` value equals `"on"`.
 
 ```ts
-export interface ArcadeOptions {
+interface ArcadeOptions {
   readonly showTutorialBook: boolean;
+  readonly showTips: boolean;
+  readonly showTipHologram: boolean;
+  readonly showAllKillfeed: boolean;
+  readonly showOwnWoolPickedUp: boolean;
+  readonly showOwnWoolDropped: boolean;
+  readonly showEnemyWoolPickedUp: boolean;
+  readonly showEnemyWoolDropped: boolean;
 }
 ```
+
+| Field                   | Raw key                            |
+| ----------------------- | ---------------------------------- |
+| `showTutorialBook`      | `option_show_tutorial_book`        |
+| `showTips`              | `option_show_tips`                 |
+| `showTipHologram`       | `option_show_tip_hologram`         |
+| `showAllKillfeed`       | `option_show_all_killfeed`         |
+| `showOwnWoolPickedUp`   | `option_show_own_wool_picked_up`   |
+| `showOwnWoolDropped`    | `option_show_own_wool_dropped`     |
+| `showEnemyWoolPickedUp` | `option_show_enemy_wool_picked_up` |
+| `showEnemyWoolDropped`  | `option_show_enemy_wool_dropped`   |
+
+### ArcadePrivateGamesSettings
+
+Read from the raw `privategames` object.
+
+```ts
+interface ArcadePrivateGamesSettings {
+  readonly healthBuff: string;
+  readonly naturalRegeneration: string;
+  readonly noFallDamage: boolean;
+  readonly permanentPvp: boolean;
+  readonly powerUpAbundance: string;
+  readonly mapsForEasy: string;
+  readonly mapsForMedium: string;
+  readonly mapsForHard: string;
+}
+```
+
+| Field                 | Raw key                |
+| --------------------- | ---------------------- |
+| `healthBuff`          | `health_buff`          |
+| `naturalRegeneration` | `natural_regeneration` |
+| `noFallDamage`        | `no_fall_damage`       |
+| `permanentPvp`        | `permanent_pvp`        |
+| `powerUpAbundance`    | `power_up_abundance`   |
+| `mapsForEasy`         | `maps_for_easy`        |
+| `mapsForMedium`       | `maps_for_medium`      |
+| `mapsForHard`         | `maps_for_hard`        |
+
+### ArcadeDttSettings
+
+Draw Their Thing UI toggles (raw `dtt_dropdown`, `dtt_filter`, `dtt_music`).
+
+```ts
+interface ArcadeDttSettings {
+  readonly dropdown: boolean;
+  readonly filter: boolean;
+  readonly music: boolean;
+}
+```
+
+---
+
+## Per-game stat types
 
 ### ArcadeBlockingDeadStats
 
 Blocking Dead stats (raw `*_dayone` keys).
 
 ```ts
-export interface ArcadeBlockingDeadStats {
+interface ArcadeBlockingDeadStats {
   readonly wins: number;
   readonly kills: number;
   readonly headshots: number;
@@ -152,7 +229,7 @@ export interface ArcadeBlockingDeadStats {
 Dragon Wars stats (raw `*_dragonwars2` keys).
 
 ```ts
-export interface ArcadeDragonWarsStats {
+interface ArcadeDragonWarsStats {
   readonly wins: number;
   readonly kills: number;
 }
@@ -160,25 +237,27 @@ export interface ArcadeDragonWarsStats {
 
 ### ArcadePixelPaintersStats
 
-Pixel Painters stats (raw `wins_draw_their_thing`).
+Pixel Painters stats (raw `wins_draw_their_thing` and `paintedBlocks`).
 
 ```ts
-export interface ArcadePixelPaintersStats {
+interface ArcadePixelPaintersStats {
   readonly wins: number;
+  readonly paintedBlocks: number;
 }
 ```
 
 ### ArcadePixelPartyStats
 
-Pixel Party stats from the raw `pixel_party` object, including per-mode breakdowns.
+Pixel Party stats from the raw `pixel_party` object, including per-mode breakdowns. `language` reads the top-level raw `pp_language` key.
 
 ```ts
-export interface ArcadePixelPartyStats {
+interface ArcadePixelPartyStats {
   readonly gamesPlayed: number;
   readonly wins: number;
   readonly highestRound: number;
   readonly powerUpsCollected: number;
   readonly roundsCompleted: number;
+  readonly language: string;
   readonly normal: ArcadePixelPartyModeStats;
   readonly hyper: ArcadePixelPartyModeStats;
 }
@@ -189,7 +268,7 @@ export interface ArcadePixelPartyStats {
 Per-mode Pixel Party stats. `normal` reads the `_normal` suffixed keys and `hyper` reads the `_hyper` suffixed keys.
 
 ```ts
-export interface ArcadePixelPartyModeStats {
+interface ArcadePixelPartyModeStats {
   readonly gamesPlayed: number;
   readonly wins: number;
   readonly powerUpsCollected: number;
@@ -199,10 +278,10 @@ export interface ArcadePixelPartyModeStats {
 
 ### ArcadePixelPartyColorblind
 
-Pixel Party colorblind settings from the raw `pixelparty` object. `customPresets` maps preset name to a list of strings.
+Pixel Party colorblind settings from the raw `pixelparty` object. `preset` reads `colorblind_preset`; `customPresets` (raw `colorblind_custom_presets`) maps each preset name to a list of strings.
 
 ```ts
-export interface ArcadePixelPartyColorblind {
+interface ArcadePixelPartyColorblind {
   readonly preset: string;
   readonly customPresets: Readonly<Record<string, readonly string[]>>;
 }
@@ -213,7 +292,7 @@ export interface ArcadePixelPartyColorblind {
 Disasters stats from the raw `disasters.stats` object. `deaths` and `survived` are raw number maps keyed by their original raw entry names.
 
 ```ts
-export interface ArcadeDisastersStats {
+interface ArcadeDisastersStats {
   readonly gamesPlayed: number;
   readonly wins: number;
   readonly losses: number;
@@ -223,23 +302,12 @@ export interface ArcadeDisastersStats {
 }
 ```
 
-### ArcadeDttSettings
-
-Draw Their Thing UI toggles (raw `dtt_dropdown`, `dtt_filter`).
-
-```ts
-export interface ArcadeDttSettings {
-  readonly dropdown: boolean;
-  readonly filter: boolean;
-}
-```
-
 ### ArcadeDropperStats
 
 The Dropper stats from the raw `dropper` object. `maps` is a fixed record keyed by `ArcadeDropperMapName` (see below), each value an `ArcadeDropperMap`.
 
 ```ts
-export interface ArcadeDropperStats {
+interface ArcadeDropperStats {
   readonly wins: number;
   readonly fails: number;
   readonly fastestGame: number;
@@ -256,7 +324,7 @@ export interface ArcadeDropperStats {
 Per-map Dropper stats from `dropper.map_stats[<map>]`.
 
 ```ts
-export interface ArcadeDropperMap {
+interface ArcadeDropperMap {
   readonly bestTime: number;
   readonly completions: number;
 }
@@ -335,7 +403,7 @@ type ArcadeDropperMapName =
 Easter Simulator stats (raw `*_easter_simulator` keys).
 
 ```ts
-export interface ArcadeEasterSimulatorStats {
+interface ArcadeEasterSimulatorStats {
   readonly wins: number;
   readonly eggsFound: number;
 }
@@ -346,7 +414,7 @@ export interface ArcadeEasterSimulatorStats {
 Ender Spleef stats (raw `*_ender` keys plus `enderspleef_trail`).
 
 ```ts
-export interface ArcadeEnderSpleefStats {
+interface ArcadeEnderSpleefStats {
   readonly wins: number;
   readonly blocksDestroyed: number;
   readonly spleefTrail: string;
@@ -361,7 +429,7 @@ export interface ArcadeEnderSpleefStats {
 Farm Hunt stats (raw `*_farm_hunt` keys).
 
 ```ts
-export interface ArcadeFarmHuntStats {
+interface ArcadeFarmHuntStats {
   readonly wins: number;
   readonly kills: number;
   readonly poopCollected: number;
@@ -387,7 +455,7 @@ export interface ArcadeFarmHuntStats {
 Galaxy Wars stats (raw `sw_*` keys).
 
 ```ts
-export interface ArcadeGalaxyWarsStats {
+interface ArcadeGalaxyWarsStats {
   readonly gameWins: number;
   readonly kills: number;
   readonly deaths: number;
@@ -406,7 +474,7 @@ export interface ArcadeGalaxyWarsStats {
 Grinch Simulator stats (raw `*_grinch_simulator_v2` keys, including tourney variants).
 
 ```ts
-export interface ArcadeGrinchSimulatorStats {
+interface ArcadeGrinchSimulatorStats {
   readonly wins: number;
   readonly gifts: number;
   readonly winsTourney: number;
@@ -423,7 +491,7 @@ export interface ArcadeGrinchSimulatorStats {
 Halloween Simulator stats (raw `*_halloween_simulator` keys).
 
 ```ts
-export interface ArcadeHalloweenSimulatorStats {
+interface ArcadeHalloweenSimulatorStats {
   readonly wins: number;
   readonly candyFound: number;
 }
@@ -431,30 +499,32 @@ export interface ArcadeHalloweenSimulatorStats {
 
 ### ArcadeHideAndSeekStats
 
-Hide and Seek stats (raw `*_hide_and_seek` keys across the Party Pooper and Prop Hunt variants).
+Hide and Seek stats (raw `*_hide_and_seek` keys across the Party Pooper and Prop Hunt variants). `showQueueBook` reads `hideandseek_showqueuebook`.
 
 ```ts
-export interface ArcadeHideAndSeekStats {
+interface ArcadeHideAndSeekStats {
   readonly hiderWins: number;
   readonly seekerWins: number;
   readonly partyPooperHiderWins: number;
   readonly partyPooperSeekerWins: number;
   readonly propHuntHiderWins: number;
   readonly propHuntSeekerWins: number;
+  readonly showQueueBook: boolean;
 }
 ```
 
 ### ArcadeHoleInTheWallStats
 
-Hole in the Wall stats (raw `*_hole_in_the_wall` and `hitw_*` keys).
+Hole in the Wall stats (raw `*_hole_in_the_wall` and `hitw_*` keys). `recordFinish` reads `hitw_record_f`, `recordQualification` reads `hitw_record_q`, and `perfectTitle` reads `hitwPerfectTitle`.
 
 ```ts
-export interface ArcadeHoleInTheWallStats {
+interface ArcadeHoleInTheWallStats {
   readonly wins: number;
   readonly rounds: number;
   readonly color: string;
   readonly recordFinish: number;
   readonly recordQualification: number;
+  readonly perfectTitle: boolean;
 }
 ```
 
@@ -463,17 +533,17 @@ export interface ArcadeHoleInTheWallStats {
 Hypixel Sports stats (raw `wins_hypixel_sports`).
 
 ```ts
-export interface ArcadeHypixelSportsStats {
+interface ArcadeHypixelSportsStats {
   readonly wins: number;
 }
 ```
 
 ### ArcadeMiniWallsStats
 
-Mini Walls stats (raw `*_mini_walls` keys plus `*_tourney_mini_walls_0` variants). `inventoryLayout` is a raw number map.
+Mini Walls stats (raw `*_mini_walls` keys plus `*_tourney_mini_walls_0` variants). `activeKit` reads `miniwalls_activeKit`; `inventoryLayout` (raw `mini_walls_inventory_layout`) is a raw number map.
 
 ```ts
-export interface ArcadeMiniWallsStats {
+interface ArcadeMiniWallsStats {
   readonly wins: number;
   readonly kills: number;
   readonly finalKills: number;
@@ -500,7 +570,7 @@ export interface ArcadeMiniWallsStats {
 Bounty Hunters stats (raw `*_oneinthequiver` keys).
 
 ```ts
-export interface ArcadeBountyHuntersStats {
+interface ArcadeBountyHuntersStats {
   readonly wins: number;
   readonly kills: number;
   readonly deaths: number;
@@ -515,7 +585,7 @@ export interface ArcadeBountyHuntersStats {
 Party Games stats (raw `*_party` keys). `games` is a fixed record keyed by `ArcadePartyGameName`, each value an `ArcadePartyGameStats`.
 
 ```ts
-export interface ArcadePartyGamesStats {
+interface ArcadePartyGamesStats {
   readonly wins: number;
   readonly wins2: number;
   readonly wins3: number;
@@ -530,7 +600,7 @@ export interface ArcadePartyGamesStats {
 Per-game Party Games stats. Each game reads `<game>_best_score_party`, `<game>_best_time_party`, `<game>_kills_party`, `<game>_round_wins_party`, and `<game>_total_score_party`. Two games override certain raw keys: `lawnMoower` sources `bestScore`/`totalScore` from `lawn_moower_mowed_best_score_party` / `lawn_moower_mowed_total_score_party`, and `rpg16` sources `bestScore` from `rpg_16_kills_best_score_party`.
 
 ```ts
-export interface ArcadePartyGameStats {
+interface ArcadePartyGameStats {
   readonly bestScore: number;
   readonly bestTime: number;
   readonly kills: number;
@@ -576,7 +646,7 @@ type ArcadePartyGameName =
 Santa Says stats (raw `*_santa_says` keys).
 
 ```ts
-export interface ArcadeSantaSaysStats {
+interface ArcadeSantaSaysStats {
   readonly wins: number;
   readonly rounds: number;
   readonly roundWins: number;
@@ -589,7 +659,7 @@ export interface ArcadeSantaSaysStats {
 Santa Simulator stats (raw `*_santa_simulator` keys).
 
 ```ts
-export interface ArcadeSantaSimulatorStats {
+interface ArcadeSantaSimulatorStats {
   readonly wins: number;
   readonly delivered: number;
   readonly spotted: number;
@@ -601,7 +671,7 @@ export interface ArcadeSantaSimulatorStats {
 Seasonal Santa Simulator stats (raw `*_ss_SANTA_SIMULATOR` keys).
 
 ```ts
-export interface ArcadeSantaSimulatorSeasonalStats {
+interface ArcadeSantaSimulatorSeasonalStats {
   readonly wins: number;
   readonly delivered: number;
   readonly spotted: number;
@@ -613,7 +683,7 @@ export interface ArcadeSantaSimulatorSeasonalStats {
 Scuba Simulator stats (raw `*_scuba_simulator` keys).
 
 ```ts
-export interface ArcadeScubaSimulatorStats {
+interface ArcadeScubaSimulatorStats {
   readonly wins: number;
   readonly itemsFound: number;
   readonly totalPoints: number;
@@ -622,48 +692,117 @@ export interface ArcadeScubaSimulatorStats {
 
 ### ArcadeHypixelSaysStats
 
-Hypixel Says stats (raw `*_simon_says` keys).
+Hypixel Says stats (raw `*_simon_says` keys). `song` reads `simon_song`.
 
 ```ts
-export interface ArcadeHypixelSaysStats {
+interface ArcadeHypixelSaysStats {
   readonly wins: number;
   readonly rounds: number;
   readonly roundWins: number;
   readonly topScore: number;
+  readonly song: boolean;
 }
 ```
 
 ### ArcadeSoccerStats
 
-Soccer stats (raw `*_soccer` keys, including `powerkicks_soccer`).
+Soccer stats (raw `*_soccer` keys plus the `fb_*` variants).
 
 ```ts
-export interface ArcadeSoccerStats {
+interface ArcadeSoccerStats {
   readonly wins: number;
   readonly goals: number;
   readonly kicks: number;
   readonly powerKicks: number;
+  readonly fbGoals: number;
+  readonly fbKicks: number;
+  readonly fbPowerKicks: number;
 }
 ```
 
+| Field          | Raw key             |
+| -------------- | ------------------- |
+| `powerKicks`   | `powerkicks_soccer` |
+| `fbGoals`      | `fb_goals`          |
+| `fbKicks`      | `fb_kicks`          |
+| `fbPowerKicks` | `fb_powerkicks`     |
+
 ### ArcadeThrowOutStats
 
-Throw Out stats (raw `*_throw_out` keys).
+Throw Out stats (raw `*_throw_out` keys). `disguise` reads `throwout_disguise`.
 
 ```ts
-export interface ArcadeThrowOutStats {
+interface ArcadeThrowOutStats {
+  readonly wins: number;
+  readonly kills: number;
+  readonly deaths: number;
+  readonly disguise: string;
+}
+```
+
+### ArcadeGrindStats
+
+Grind stats (raw `*_grind` keys).
+
+```ts
+interface ArcadeGrindStats {
   readonly wins: number;
   readonly kills: number;
   readonly deaths: number;
 }
 ```
 
-### ArcadeWoolHuntStats
+### ArcadeSplatoonStats
 
-Wool Hunt stats (raw `woolhunt_*` keys). `inventoryLayout` is a raw number map.
+Splatoon stats (raw `*_splatoon` keys).
 
 ```ts
-export interface ArcadeWoolHuntStats {
+interface ArcadeSplatoonStats {
+  readonly wins: number;
+  readonly kills: number;
+  readonly deaths: number;
+}
+```
+
+### ArcadeVolleyballStats
+
+Volleyball stats (raw `*_volleyball` keys).
+
+```ts
+interface ArcadeVolleyballStats {
+  readonly wins: number;
+  readonly kills: number;
+  readonly deaths: number;
+}
+```
+
+### ArcadeSpaceRaidersStats
+
+Space Raiders stats (raw `*_spaceraiders` keys).
+
+```ts
+interface ArcadeSpaceRaidersStats {
+  readonly wins: number;
+  readonly kills: number;
+}
+```
+
+### ArcadePumpkinSpleefStats
+
+Pumpkin Spleef stats (raw `wins_pspleef`).
+
+```ts
+interface ArcadePumpkinSpleefStats {
+  readonly wins: number;
+}
+```
+
+### ArcadeWoolHuntStats
+
+Wool Hunt stats (raw `woolhunt_*` keys). `inventoryLayout` (raw `woolhunt_inventorylayout`) is a raw number map.
+
+```ts
+interface ArcadeWoolHuntStats {
   readonly participatedWins: number;
   readonly participatedLosses: number;
   readonly experiencedWins: number;
@@ -688,12 +827,16 @@ export interface ArcadeWoolHuntStats {
 }
 ```
 
+---
+
+## Zombies
+
 ### ArcadeZombiesStats
 
-Zombies stats (raw `*_zombies` keys). Contains the global stats, an `enemyKills` record keyed by `ArcadeZombiesEnemyName`, the special Alien Arcadium block, and the three standard maps.
+Zombies stats (raw `*_zombies` keys). Contains the global stats, an `enemyKills` record keyed by `ArcadeZombiesEnemyName`, the special Alien Arcadium block, and the three standard maps. `hideTutorials` reads `zombies_hideTutorials`.
 
 ```ts
-export interface ArcadeZombiesStats {
+interface ArcadeZombiesStats {
   readonly wins: number;
   readonly deaths: number;
   readonly zombieKills: number;
@@ -725,7 +868,7 @@ The `badBlood`, `deadEnd`, and `prison` maps read the raw `*_zombies_badblood`, 
 Per-map Zombies stats with the three difficulty sub-modes.
 
 ```ts
-export interface ArcadeZombiesMap {
+interface ArcadeZombiesMap {
   readonly wins: number;
   readonly deaths: number;
   readonly bestRound: number;
@@ -746,7 +889,7 @@ export interface ArcadeZombiesMap {
 The Alien Arcadium Zombies map (raw `*_zombies_alienarcadium` keys). Has only a `normal` sub-mode.
 
 ```ts
-export interface ArcadeZombiesAlienArcadium {
+interface ArcadeZombiesAlienArcadium {
   readonly wins: number;
   readonly deaths: number;
   readonly bestRound: number;
@@ -765,7 +908,7 @@ export interface ArcadeZombiesAlienArcadium {
 Per-difficulty Zombies sub-mode stats (raw `*_zombies_<map>_<mode>` keys where mode is `normal`, `hard`, or `rip`).
 
 ```ts
-export interface ArcadeZombiesMapMode {
+interface ArcadeZombiesMapMode {
   readonly wins: number;
   readonly deaths: number;
   readonly bestRound: number;

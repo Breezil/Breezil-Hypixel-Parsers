@@ -14,7 +14,23 @@ export interface WallsStats {
   readonly noStartingItems: boolean;
   readonly noStartingTools: boolean;
   readonly shoutCount: number;
+  readonly votesAztec: number;
+  readonly votesCandyland: number;
+  readonly votesCastle: number;
+  readonly votesDwarven: number;
+  readonly votesEgypt: number;
   readonly votesFantasy: number;
+  readonly votesHarmony: number;
+  readonly votesIsland: number;
+  readonly votesJungle: number;
+  readonly votesLoveLand: number;
+  readonly votesModern: number;
+  readonly votesNordic: number;
+  readonly votesOutback: number;
+  readonly votesSaraat: number;
+  readonly votesShire: number;
+  readonly votesSpace: number;
+  readonly votesWild: number;
   readonly monthlyAssistsA: number;
   readonly monthlyAssistsB: number;
   readonly weeklyAssistsA: number;
@@ -139,7 +155,23 @@ export function parseWalls(stats: Record<string, unknown>): WallsStats | null {
     noStartingItems: bool(walls, "no_starting_items"),
     noStartingTools: bool(walls, "no_starting_tools"),
     shoutCount: num(walls, "shout_count"),
+    votesAztec: num(walls, "votes_Aztec"),
+    votesCandyland: num(walls, "votes_Candyland"),
+    votesCastle: num(walls, "votes_Castle"),
+    votesDwarven: num(walls, "votes_Dwarven"),
+    votesEgypt: num(walls, "votes_Egypt"),
     votesFantasy: num(walls, "votes_Fantasy"),
+    votesHarmony: num(walls, "votes_Harmony"),
+    votesIsland: num(walls, "votes_Island"),
+    votesJungle: num(walls, "votes_Jungle"),
+    votesLoveLand: num(walls, "votes_LoveLand"),
+    votesModern: num(walls, "votes_Modern"),
+    votesNordic: num(walls, "votes_Nordic"),
+    votesOutback: num(walls, "votes_Outback"),
+    votesSaraat: num(walls, "votes_Saraat"),
+    votesShire: num(walls, "votes_Shire"),
+    votesSpace: num(walls, "votes_Space"),
+    votesWild: num(walls, "votes_Wild"),
     monthlyAssistsA: num(walls, "monthly_assists_a"),
     monthlyAssistsB: num(walls, "monthly_assists_b"),
     weeklyAssistsA: num(walls, "weekly_assists_a"),

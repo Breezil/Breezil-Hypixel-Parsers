@@ -1,4 +1,4 @@
-import { num, str, bool, date } from "./common";
+import { num, str, bool, date, obj } from "./common";
 
 export interface TNTGamesTNTRunStats {
   readonly wins: number;
@@ -29,6 +29,7 @@ export interface TNTGamesPVPRunStats {
   readonly fortitude: number;
   readonly doubleJumps: number;
   readonly doubleJumpsLegacy: number;
+  readonly prefix: string;
 }
 
 export interface TNTGamesBowSpleefStats {
@@ -46,7 +47,10 @@ export interface TNTGamesBowSpleefStats {
   readonly tripleShotLegacy: number;
   readonly arrowRain: number;
   readonly explosiveDash: number;
+  readonly fireFlurry: number;
+  readonly fireFlurryCapitalized: number;
   readonly arrowTrail: string;
+  readonly arrowTrailLegacy: string;
   readonly prefix: string;
 }
 
@@ -60,6 +64,7 @@ export interface TNTGamesTNTTagStats {
   readonly speedItUp: number;
   readonly slowItDown: number;
   readonly suit: string;
+  readonly suitLegacy: string;
   readonly prefix: string;
 }
 
@@ -72,6 +77,7 @@ export interface TNTGamesWizardBase {
   readonly healing: number;
   readonly damageTaken: number;
   readonly alternateEffectsStatus: boolean;
+  readonly alternateEffects: string;
 }
 
 export interface TNTGamesWizardPrestige {
@@ -86,6 +92,7 @@ export interface TNTGamesWizardLegacy {
 export interface TNTGamesWizardTier {
   readonly explodeTier: number;
   readonly regenTier: number;
+  readonly prestigeFieldLegacy: string;
 }
 
 export interface TNTGamesAncientWizard
@@ -128,7 +135,11 @@ export interface TNTGamesStormWizard
   extends TNTGamesWizardBase, TNTGamesWizardPrestige {}
 
 export interface TNTGamesToxicWizard
-  extends TNTGamesWizardBase, TNTGamesWizardPrestige, TNTGamesWizardLegacy {}
+  extends
+    TNTGamesWizardBase,
+    TNTGamesWizardPrestige,
+    TNTGamesWizardLegacy,
+    TNTGamesWizardTier {}
 
 export interface TNTGamesWitherWizard
   extends
@@ -177,18 +188,23 @@ export interface TNTGamesPrivateGames {
   readonly bowSpleefHeavyArrows: boolean;
   readonly bowSpleefQuintuple: boolean;
   readonly bowSpleefDjMultiplier: string;
+  readonly healthBuff: string;
   readonly lowGravity: boolean;
   readonly maxedPerks: boolean;
+  readonly oneHitOneKill: boolean;
   readonly pvpRunArmorType: string;
   readonly pvpRunKnockback: boolean;
   readonly pvpRunSwordType: string;
   readonly speed: string;
+  readonly tntRunHeavyFeet: boolean;
   readonly tntRunSnowballs: boolean;
   readonly tntTagDeathmatch: boolean;
   readonly tntTagNoPowerups: boolean;
+  readonly wizardsCaptureSpeed: string;
   readonly wizardsDeathPenalty: string;
   readonly wizardsManaRegen: string;
   readonly wizardsMaxClasses: boolean;
+  readonly wizardsNoRegen: boolean;
 }
 
 export interface TNTGamesLeaderboardSettings {
@@ -199,6 +215,10 @@ export interface TNTGamesLeaderboardSettings {
 export interface TNTGamesMapVote {
   readonly map: string;
   readonly votes: number;
+}
+
+export interface TNTGamesFavorites {
+  readonly deathEffect: readonly string[];
 }
 
 export interface TNTGamesStats {
@@ -212,12 +232,17 @@ export interface TNTGamesStats {
   readonly activeParticle: string;
   readonly activeParticleEffect: string;
   readonly activeVoidMessage: string;
+  readonly doubleJumpEffect: string;
   readonly newActiveDeathEffect: string;
   readonly newActiveParticleEffect: string;
   readonly newDoubleJumpEffect: string;
   readonly newSelectedHat: string;
   readonly selectedHat: string;
+  readonly runDoubleJumps: number;
+  readonly shopSort: string;
+  readonly shopSortEnableOwnedFirst: boolean;
   readonly packages: readonly string[];
+  readonly favorites: TNTGamesFavorites;
   readonly mapVotes: readonly TNTGamesMapVote[];
   readonly flags: TNTGamesFlags;
   readonly privateGames: TNTGamesPrivateGames;
@@ -228,6 +253,11 @@ export interface TNTGamesStats {
   readonly bowSpleef: TNTGamesBowSpleefStats;
   readonly tntTag: TNTGamesTNTTagStats;
   readonly wizards: TNTGamesWizardsStats;
+  readonly tntRunHotbar: Readonly<Record<string, string>>;
+  readonly pvpRunHotbar: Readonly<Record<string, string>>;
+  readonly bowSpleefHotbar: Readonly<Record<string, string>>;
+  readonly tntTagHotbar: Readonly<Record<string, string>>;
+  readonly wizardsHotbar: Readonly<Record<string, string>>;
 }
 
 function parseTNTRun(tntGames: Record<string, unknown>): TNTGamesTNTRunStats {
@@ -275,6 +305,7 @@ function parsePVPRun(tntGames: Record<string, unknown>): TNTGamesPVPRunStats {
     fortitude: num(tntGames, "new_pvprun_fortitude"),
     doubleJumps: num(tntGames, "new_pvprun_double_jumps"),
     doubleJumpsLegacy: num(tntGames, "new_pvprun_double_jumps_legacy"),
+    prefix: str(tntGames, "prefix_pvprun"),
   };
 }
 
@@ -296,7 +327,10 @@ function parseBowSpleef(
     tripleShotLegacy: num(tntGames, "new_spleef_tripleshot_legacy"),
     arrowRain: num(tntGames, "new_spleef_arrowrain"),
     explosiveDash: num(tntGames, "new_spleef_exlosive_dash"),
+    fireFlurry: num(tntGames, "new_spleef_fireflurry"),
+    fireFlurryCapitalized: num(tntGames, "new_spleef_FireFlurry"),
     arrowTrail: str(tntGames, "new_spleef_arrowtrail"),
+    arrowTrailLegacy: str(tntGames, "spleef_arrowtrail"),
     prefix: str(tntGames, "prefix_bowspleef"),
   };
 }
@@ -312,6 +346,7 @@ function parseTNTTag(tntGames: Record<string, unknown>): TNTGamesTNTTagStats {
     speedItUp: num(tntGames, "tag_speeditup"),
     slowItDown: num(tntGames, "tag_slowitdown"),
     suit: str(tntGames, "new_tag_suit"),
+    suitLegacy: str(tntGames, "tag_suit"),
     prefix: str(tntGames, "prefix_tntag"),
   };
 }
@@ -332,6 +367,7 @@ function wizardBase(
       tntGames,
       `${prefix}_alternate_effects_status`,
     ),
+    alternateEffects: str(tntGames, `${prefix}_alternate_effects`),
   };
 }
 
@@ -361,6 +397,7 @@ function wizardTier(
   return {
     explodeTier: num(tntGames, `${wizard}_explode`),
     regenTier: num(tntGames, `${wizard}_regen`),
+    prestigeFieldLegacy: str(tntGames, `${wizard}_prestige_field`),
   };
 }
 
@@ -419,6 +456,7 @@ function parseWizards(tntGames: Record<string, unknown>): TNTGamesWizardsStats {
       ...wizardBase(tntGames, "new_toxicwizard"),
       ...wizardPrestige(tntGames, "new_toxicwizard"),
       ...wizardLegacy(tntGames, "new_toxicwizard"),
+      ...wizardTier(tntGames, "toxicwizard"),
     },
     wither: {
       ...wizardBase(tntGames, "new_witherwizard"),
@@ -464,18 +502,23 @@ function parsePrivateGames(
     bowSpleefHeavyArrows: bool(raw, "bow_spleef_heavy_arrows"),
     bowSpleefQuintuple: bool(raw, "bow_spleef_quintuple"),
     bowSpleefDjMultiplier: str(raw, "bowspleef_dj_multiplier"),
+    healthBuff: str(raw, "health_buff"),
     lowGravity: bool(raw, "low_gravity"),
     maxedPerks: bool(raw, "maxed_perks"),
+    oneHitOneKill: bool(raw, "one_hit_one_kill"),
     pvpRunArmorType: str(raw, "pvp_run_armor_type"),
     pvpRunKnockback: bool(raw, "pvp_run_knockback"),
     pvpRunSwordType: str(raw, "pvp_run_sword_type"),
     speed: str(raw, "speed"),
+    tntRunHeavyFeet: bool(raw, "tnt_run_heavy_feet"),
     tntRunSnowballs: bool(raw, "tnt_run_snowballs"),
     tntTagDeathmatch: bool(raw, "tnt_tag_deathmatch"),
     tntTagNoPowerups: bool(raw, "tnt_tag_no_powerups"),
+    wizardsCaptureSpeed: str(raw, "wizards_capture_speed"),
     wizardsDeathPenalty: str(raw, "wizards_death_penalty"),
     wizardsManaRegen: str(raw, "wizards_mana_regen"),
     wizardsMaxClasses: bool(raw, "wizards_max_classes"),
+    wizardsNoRegen: bool(raw, "wizards_no_regen"),
   };
 }
 
@@ -500,6 +543,33 @@ function parsePackages(tntGames: Record<string, unknown>): readonly string[] {
   return Array.isArray(value)
     ? value.filter((entry): entry is string => typeof entry === "string")
     : [];
+}
+
+function parseFavorites(tntGames: Record<string, unknown>): TNTGamesFavorites {
+  const raw = obj(tntGames, "favorites");
+  const deathEffect = raw.death_effect;
+  return {
+    deathEffect: Array.isArray(deathEffect)
+      ? deathEffect.filter(
+          (entry): entry is string => typeof entry === "string",
+        )
+      : [],
+  };
+}
+
+function parseHotbar(
+  tntGames: Record<string, unknown>,
+  key: string,
+): Readonly<Record<string, string>> {
+  const raw = obj(tntGames, key);
+  const hotbar: Record<string, string> = {};
+  for (const slot of Object.keys(raw)) {
+    const value = raw[slot];
+    if (typeof value === "string") {
+      hotbar[slot] = value;
+    }
+  }
+  return hotbar;
 }
 
 function parseMapVotes(
@@ -538,12 +608,17 @@ export function parseTNTGames(
     activeParticle: str(tntGames, "active_particle"),
     activeParticleEffect: str(tntGames, "active_particle_effect"),
     activeVoidMessage: str(tntGames, "active_void_message"),
+    doubleJumpEffect: str(tntGames, "double_jump_effect"),
     newActiveDeathEffect: str(tntGames, "new_active_death_effect"),
     newActiveParticleEffect: str(tntGames, "new_active_particle_effect"),
     newDoubleJumpEffect: str(tntGames, "new_double_jump_effect"),
     newSelectedHat: str(tntGames, "new_selected_hat"),
     selectedHat: str(tntGames, "selected_hat"),
+    runDoubleJumps: num(tntGames, "new_run_double_jumps"),
+    shopSort: str(tntGames, "shop_sort"),
+    shopSortEnableOwnedFirst: bool(tntGames, "shop_sort_enable_owned_first"),
     packages: parsePackages(tntGames),
+    favorites: parseFavorites(tntGames),
     mapVotes: parseMapVotes(tntGames),
     flags: parseFlags(tntGames),
     privateGames: parsePrivateGames(tntGames),
@@ -554,6 +629,11 @@ export function parseTNTGames(
     bowSpleef: parseBowSpleef(tntGames),
     tntTag: parseTNTTag(tntGames),
     wizards: parseWizards(tntGames),
+    tntRunHotbar: parseHotbar(tntGames, "tntrun"),
+    pvpRunHotbar: parseHotbar(tntGames, "pvprun"),
+    bowSpleefHotbar: parseHotbar(tntGames, "spleef"),
+    tntTagHotbar: parseHotbar(tntGames, "tnttag"),
+    wizardsHotbar: parseHotbar(tntGames, "wizards"),
   };
 }
 

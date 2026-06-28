@@ -1,30 +1,38 @@
 # Cops and Crims
 
-The Cops and Crims parser turns the raw `stats.MCGO` block from the Hypixel player API into a readonly, fully-typed object. It is strict-raw: every field is copied directly from the API with no derived, computed, or aggregated values.
+The Cops and Crims module exposes a single parser, `parseCopsAndCrims`, which mirrors the raw `stats.MCGO` block of the Hypixel player API field-for-field into readonly, fully-typed objects. Every value below is read straight from the raw JSON with no computation, no ratios, and no derived totals.
 
 ## parseCopsAndCrims
 
 Parses a player's Cops and Crims stats (`stats.MCGO`) into a typed object.
 
 ```ts
-export function parseCopsAndCrims(
+function parseCopsAndCrims(
   stats: Record<string, unknown>,
 ): CopsAndCrimsStats | null;
 ```
 
 ### Null / empty behavior
 
-- Returns `null` when `stats.MCGO` is missing, not an object, or is an array.
-- When present, every numeric field defaults to `0`, every string field to `""`, and every boolean field to `false` when its underlying key is absent.
-- `packages` and `claimedLevelRewards` return empty arrays when their keys are missing or are not arrays; non-matching array elements are filtered out by type.
-- The `datedSnapshots` records return empty objects (`{}`) when no matching dated keys are present.
+`parseCopsAndCrims` returns `null` when `stats.MCGO` is missing, is not an object, or is an array. Otherwise it returns a fully-populated `CopsAndCrimsStats` object. Missing fields are filled in by the safe readers used throughout the module:
+
+- Missing or non-number values become `0`.
+- Missing or non-string values become `""`.
+- Boolean fields are `true` only when the raw value is exactly `true`, otherwise `false`.
+- Missing nested objects are treated as empty objects, so every nested block is still present and populated with the defaults above.
+- The `packages` (string) and `claimedLevelRewards` (number) array fields become empty arrays (`[]`) when absent or non-array; non-matching element types are filtered out.
+- The dynamic `datedSnapshots` maps contain only the keys present in the raw data, so they may be empty objects when no data exists.
+
+---
+
+## Returned type tree
 
 ### CopsAndCrimsStats
 
-The top-level returned type.
+The root object returned by `parseCopsAndCrims`.
 
 ```ts
-export interface CopsAndCrimsStats {
+interface CopsAndCrimsStats {
   readonly coins: number;
   readonly score: number;
   readonly level: number;
@@ -57,11 +65,13 @@ export interface CopsAndCrimsStats {
   readonly showLobbyPrefix: boolean;
   readonly showKillsInPrefix: boolean;
   readonly shopSort: string;
+  readonly shopSortEnableOwnedFirst: boolean;
   readonly packages: readonly string[];
   readonly claimedLevelRewards: readonly number[];
   readonly settings: CopsAndCrimsSettings;
   readonly leaderboardSettings: CopsAndCrimsLeaderboardSettings;
   readonly privateGames: CopsAndCrimsPrivateGames;
+  readonly legacyWeaponUpgrades: CopsAndCrimsLegacyWeaponUpgrades;
   readonly perks: CopsAndCrimsPerks;
   readonly upgrades: CopsAndCrimsUpgrades;
   readonly selected: CopsAndCrimsSelectedCosmetics;
@@ -70,154 +80,176 @@ export interface CopsAndCrimsStats {
   readonly winsByMap: CopsAndCrimsWinsByMap;
   readonly guns: CopsAndCrimsGuns;
   readonly deathmatch: CopsAndCrimsGamemodeStats;
+  readonly deathmatchParty: CopsAndCrimsGamemodeStats;
   readonly gungame: CopsAndCrimsGungameStats;
   readonly tourneyDefusalA: CopsAndCrimsTourneyStats;
   readonly tourneyDefusalB: CopsAndCrimsTourneyStats;
 }
 ```
 
-| Field                                           | Notes                                                             |
-| ----------------------------------------------- | ----------------------------------------------------------------- |
-| `kills` / `killsNew`                            | Maps the raw `kills` and `killsNew` keys.                         |
-| `grenadeKills` / `grenadeKillsAlt`              | Map the raw `grenade_kills` and `grenadeKills` keys respectively. |
-| `monthlyKillsA` / `monthlyKillsB`               | Map `monthly_kills_a` / `monthly_kills_b`.                        |
-| `weeklyKillsA` / `weeklyKillsB`                 | Map `weekly_kills_a` / `weekly_kills_b`.                          |
-| `wins`                                          | Maps the raw `game_wins` key.                                     |
-| `activeEmblem` / `activeGlyph` / `activeScheme` | Cosmetic identifiers.                                             |
-| `deathmatch` / `gungame`                        | Per-gamemode stat blocks.                                         |
-| `tourneyDefusalA` / `tourneyDefusalB`           | Tournament defusal blocks, suffixes `0` and `1`.                  |
+| Field                                 | Notes                                                            |
+| ------------------------------------- | ---------------------------------------------------------------- |
+| `kills` / `killsNew`                  | Raw `kills` and `killsNew`.                                      |
+| `criminalKills` / `copKills`          | Raw `criminal_kills` / `cop_kills`.                              |
+| `headshotKills`                       | Raw `headshot_kills`.                                            |
+| `grenadeKills` / `grenadeKillsAlt`    | Raw `grenade_kills` / `grenadeKills`.                            |
+| `monthlyKillsA` / `monthlyKillsB`     | Raw `monthly_kills_a` / `monthly_kills_b`.                       |
+| `weeklyKillsA` / `weeklyKillsB`       | Raw `weekly_kills_a` / `weekly_kills_b`.                         |
+| `wins`                                | Raw `game_wins`.                                                 |
+| `roundWins`                           | Raw `round_wins`.                                                |
+| `gamePlays`                           | Raw `game_plays`.                                                |
+| `lastTourneyAd`                       | Raw `lastTourneyAd` numeric timestamp (not converted to `Date`). |
+| `selectedLobbyPrefix`                 | Raw `selected_lobby_prefix`.                                     |
+| `showLobbyPrefix`                     | Raw `show_lobby_prefix`.                                         |
+| `showKillsInPrefix`                   | Raw `show_kills_in_prefix`.                                      |
+| `shopSort`                            | Raw `shop_sort`.                                                 |
+| `shopSortEnableOwnedFirst`            | Raw `shop_sort_enable_owned_first`.                              |
+| `claimedLevelRewards`                 | Raw `claimed_level_rewards` (number entries only).               |
+| `deathmatch`                          | `deathmatch` gamemode.                                           |
+| `deathmatchParty`                     | `deathmatch_party` gamemode.                                     |
+| `tourneyDefusalA` / `tourneyDefusalB` | `tourney_mcgo_defusal_0` / `tourney_mcgo_defusal_1`.             |
 
-## Nested types
+---
 
-### CopsAndCrimsSettings
+## Gun stat types
 
-```ts
-export interface CopsAndCrimsSettings {
-  readonly animatedSmoke: boolean;
-  readonly defuseTipHologram: boolean;
-  readonly hints: boolean;
-  readonly moneyMessages: boolean;
-  readonly screenTint: boolean;
-  readonly spawnArea: boolean;
-}
-```
+### CopsAndCrimsGunStats
 
-### CopsAndCrimsLeaderboardSettings
-
-Read from the nested `leaderboardSettings` object.
-
-```ts
-export interface CopsAndCrimsLeaderboardSettings {
-  readonly mode: string;
-  readonly resetType: string;
-}
-```
-
-### CopsAndCrimsPrivateGames
-
-Read from the nested `privategames` object.
+The shared shape for most guns (`smg`, `rifle`, `carbine`, `magnum`, `shotgun`, `scopedRifle`, `autoShotgun`, `bullpup`, `handgun`).
 
 ```ts
-export interface CopsAndCrimsPrivateGames {
-  readonly mcgoPrivateChallengeMode: boolean;
-}
-```
-
-### CopsAndCrimsPerks
-
-Read from the nested `perk` object.
-
-```ts
-export interface CopsAndCrimsPerks {
-  readonly baseCoin: CopsAndCrimsPerkBaseCoin;
-}
-```
-
-### CopsAndCrimsPerkBaseCoin
-
-Read from the nested `perk.base_coin` object.
-
-```ts
-export interface CopsAndCrimsPerkBaseCoin {
+interface CopsAndCrimsGunStats {
+  readonly damageIncrease: number;
+  readonly recoilReduction: number;
+  readonly reloadSpeedReduction: number;
+  readonly costReduction: number;
   readonly kills: number;
+  readonly headshots: number;
+}
+```
+
+### CopsAndCrimsPistolStats
+
+Like `CopsAndCrimsGunStats` but without `costReduction`.
+
+```ts
+interface CopsAndCrimsPistolStats {
+  readonly damageIncrease: number;
+  readonly recoilReduction: number;
+  readonly reloadSpeedReduction: number;
+  readonly kills: number;
+  readonly headshots: number;
+}
+```
+
+### CopsAndCrimsSniperStats
+
+Like `CopsAndCrimsGunStats` but without `recoilReduction`.
+
+```ts
+interface CopsAndCrimsSniperStats {
+  readonly damageIncrease: number;
+  readonly reloadSpeedReduction: number;
+  readonly costReduction: number;
+  readonly kills: number;
+  readonly headshots: number;
+}
+```
+
+### CopsAndCrimsKnifeStats
+
+```ts
+interface CopsAndCrimsKnifeStats {
+  readonly damageIncrease: number;
+  readonly attackDelay: number;
+  readonly kills: number;
+}
+```
+
+### CopsAndCrimsGuns
+
+```ts
+interface CopsAndCrimsGuns {
+  readonly smg: CopsAndCrimsGunStats;
+  readonly rifle: CopsAndCrimsGunStats;
+  readonly carbine: CopsAndCrimsGunStats;
+  readonly magnum: CopsAndCrimsGunStats;
+  readonly shotgun: CopsAndCrimsGunStats;
+  readonly sniper: CopsAndCrimsSniperStats;
+  readonly scopedRifle: CopsAndCrimsGunStats;
+  readonly autoShotgun: CopsAndCrimsGunStats;
+  readonly bullpup: CopsAndCrimsGunStats;
+  readonly handgun: CopsAndCrimsGunStats;
+  readonly pistol: CopsAndCrimsPistolStats;
+  readonly knife: CopsAndCrimsKnifeStats;
+}
+```
+
+---
+
+## Gamemode stat types
+
+### CopsAndCrimsGamemodeStats
+
+The shared shape for `deathmatch` and `deathmatchParty`, and the base of `CopsAndCrimsGungameStats`.
+
+```ts
+interface CopsAndCrimsGamemodeStats {
+  readonly kills: number;
+  readonly criminalKills: number;
+  readonly copKills: number;
+  readonly deaths: number;
+  readonly wins: number;
   readonly assists: number;
-  readonly allSources: number;
-  readonly defusalRoundWins: number;
-  readonly bombDefuses: number;
-  readonly deathmatchChallenges: number;
-  readonly bombPlants: number;
+  readonly gamePlays: number;
 }
 ```
 
-### CopsAndCrimsUpgrades
+### CopsAndCrimsGungameStats
+
+Extends `CopsAndCrimsGamemodeStats` with gungame-only collectibles.
 
 ```ts
-export interface CopsAndCrimsUpgrades {
-  readonly bodyArmorCost: number;
-  readonly bountyHunter: number;
-  readonly pocketChange: number;
-  readonly strengthTraining: number;
+interface CopsAndCrimsGungameStats extends CopsAndCrimsGamemodeStats {
+  readonly armorPacksCollected: number;
+  readonly carePackagesCollected: number;
+  readonly speedBoostsCollected: number;
+  readonly fastestWin: number;
 }
 ```
 
-### CopsAndCrimsSelectedCosmetics
+### CopsAndCrimsTourneyStats
 
-Selected cosmetic identifiers, each mapping a `selected*Dev` key.
+The shape for `tourneyDefusalA` (suffix `0`) and `tourneyDefusalB` (suffix `1`), each reading `<name>_tourney_mcgo_defusal_<suffix>` raw keys.
 
 ```ts
-export interface CopsAndCrimsSelectedCosmetics {
-  readonly autoShotgun: string;
-  readonly bullpup: string;
-  readonly carbine: string;
-  readonly creeperChestplate: string;
-  readonly creeperHelmet: string;
-  readonly handgun: string;
-  readonly knife: string;
-  readonly magnum: string;
-  readonly ocelotChestplate: string;
-  readonly ocelotHelmet: string;
-  readonly pistol: string;
-  readonly rifle: string;
-  readonly scopedRifle: string;
-  readonly shotgun: string;
-  readonly smg: string;
+interface CopsAndCrimsTourneyStats {
+  readonly kills: number;
+  readonly criminalKills: number;
+  readonly copKills: number;
+  readonly deaths: number;
+  readonly wins: number;
+  readonly assists: number;
+  readonly gamePlays: number;
+  readonly roundWins: number;
+  readonly bombsPlanted: number;
+  readonly bombsDefused: number;
+  readonly grenadeKills: number;
+  readonly headshotKills: number;
+  readonly shotsFired: number;
 }
 ```
 
-### CopsAndCrimsMcgo
+---
 
-Read from the nested `mcgo` object.
-
-```ts
-export interface CopsAndCrimsMcgo {
-  readonly points: number;
-}
-```
-
-### CopsAndCrimsDatedSnapshots
-
-Each record collects dated keys (matching the pattern `^<prefix>_(\d+_)?\d+_2014$`) into a `Record<string, number>` keyed by the date suffix.
-
-```ts
-export interface CopsAndCrimsDatedSnapshots {
-  readonly kills: Readonly<Record<string, number>>;
-  readonly killsNew: Readonly<Record<string, number>>;
-  readonly gamesWins: Readonly<Record<string, number>>;
-}
-```
-
-| Field       | Source prefix |
-| ----------- | ------------- |
-| `kills`     | `kills`       |
-| `killsNew`  | `killsNew`    |
-| `gamesWins` | `games_wins`  |
+## Maps
 
 ### CopsAndCrimsWinsByMap
 
-Each field maps a `game_wins_<map>` key.
+Per-map win counts, each read from a `game_wins_<map>` raw key.
 
 ```ts
-export interface CopsAndCrimsWinsByMap {
+interface CopsAndCrimsWinsByMap {
   readonly temple: number;
   readonly carrier: number;
   readonly atomic: number;
@@ -236,135 +268,192 @@ export interface CopsAndCrimsWinsByMap {
   readonly atomicV2: number;
   readonly melonFactory: number;
   readonly melonFactoryV2: number;
+  readonly melonfactory: number;
+  readonly cobblestone: number;
+  readonly test: number;
 }
 ```
 
-| Field            | Source key                   |
+| Field            | Raw key                      |
 | ---------------- | ---------------------------- |
 | `atomicV1`       | `game_wins_atomic v1`        |
 | `atomicV2`       | `game_wins_atomic v2`        |
 | `melonFactory`   | `game_wins_melon factory`    |
 | `melonFactoryV2` | `game_wins_melon factory v2` |
+| `melonfactory`   | `game_wins_melonfactory`     |
 
-### CopsAndCrimsGuns
+---
+
+## Cosmetics and upgrades
+
+### CopsAndCrimsSelectedCosmetics
+
+Each field reads a `selected<Item>Dev` raw key.
 
 ```ts
-export interface CopsAndCrimsGuns {
-  readonly smg: CopsAndCrimsGunStats;
-  readonly rifle: CopsAndCrimsGunStats;
-  readonly carbine: CopsAndCrimsGunStats;
-  readonly magnum: CopsAndCrimsGunStats;
-  readonly shotgun: CopsAndCrimsGunStats;
-  readonly sniper: CopsAndCrimsSniperStats;
-  readonly scopedRifle: CopsAndCrimsGunStats;
-  readonly autoShotgun: CopsAndCrimsGunStats;
-  readonly bullpup: CopsAndCrimsGunStats;
-  readonly handgun: CopsAndCrimsGunStats;
-  readonly pistol: CopsAndCrimsPistolStats;
-  readonly knife: CopsAndCrimsKnifeStats;
+interface CopsAndCrimsSelectedCosmetics {
+  readonly autoShotgun: string;
+  readonly bullpup: string;
+  readonly carbine: string;
+  readonly creeperChestplate: string;
+  readonly creeperHelmet: string;
+  readonly handgun: string;
+  readonly knife: string;
+  readonly magnum: string;
+  readonly ocelotChestplate: string;
+  readonly ocelotHelmet: string;
+  readonly pistol: string;
+  readonly rifle: string;
+  readonly scopedRifle: string;
+  readonly shotgun: string;
+  readonly smg: string;
 }
 ```
 
-### CopsAndCrimsGunStats
-
-Standard gun stat block.
+### CopsAndCrimsUpgrades
 
 ```ts
-export interface CopsAndCrimsGunStats {
-  readonly damageIncrease: number;
-  readonly recoilReduction: number;
-  readonly reloadSpeedReduction: number;
-  readonly costReduction: number;
-  readonly kills: number;
-  readonly headshots: number;
+interface CopsAndCrimsUpgrades {
+  readonly bodyArmorCost: number;
+  readonly bountyHunter: number;
+  readonly pocketChange: number;
+  readonly strengthTraining: number;
 }
 ```
 
-### CopsAndCrimsPistolStats
-
-Pistol stat block (no `costReduction`).
+### CopsAndCrimsLegacyWeaponUpgrades
 
 ```ts
-export interface CopsAndCrimsPistolStats {
-  readonly damageIncrease: number;
-  readonly recoilReduction: number;
-  readonly reloadSpeedReduction: number;
-  readonly kills: number;
-  readonly headshots: number;
+interface CopsAndCrimsLegacyWeaponUpgrades {
+  readonly ak47DamageIncrease: number;
+  readonly ak47RecoilReduction: number;
+  readonly ak47ReloadSpeedReduction: number;
+  readonly ak47CostReduction: number;
+  readonly uspDamageIncrease: number;
 }
 ```
 
-### CopsAndCrimsSniperStats
+| Field                      | Raw key                        |
+| -------------------------- | ------------------------------ |
+| `ak47DamageIncrease`       | `ak_47_damage_increase`        |
+| `ak47RecoilReduction`      | `ak_47_recoil_reduction`       |
+| `ak47ReloadSpeedReduction` | `ak_47_reload_speed_reduction` |
+| `ak47CostReduction`        | `ak_47_cost_reduction`         |
+| `uspDamageIncrease`        | `usp_damage_increase`          |
 
-Sniper stat block (no `recoilReduction`).
+---
+
+## Settings
+
+### CopsAndCrimsSettings
+
+Each field reads a `setting_<name>` raw key.
 
 ```ts
-export interface CopsAndCrimsSniperStats {
-  readonly damageIncrease: number;
-  readonly reloadSpeedReduction: number;
-  readonly costReduction: number;
-  readonly kills: number;
-  readonly headshots: number;
+interface CopsAndCrimsSettings {
+  readonly animatedSmoke: boolean;
+  readonly defuseTipHologram: boolean;
+  readonly hints: boolean;
+  readonly moneyMessages: boolean;
+  readonly screenTint: boolean;
+  readonly spawnArea: boolean;
+  readonly soundsBodyshot: boolean;
+  readonly soundsHeadshot: boolean;
+  readonly soundsDefuseProgress: boolean;
 }
 ```
 
-### CopsAndCrimsKnifeStats
+### CopsAndCrimsLeaderboardSettings
+
+Read from the raw `leaderboardSettings` object.
 
 ```ts
-export interface CopsAndCrimsKnifeStats {
-  readonly damageIncrease: number;
-  readonly attackDelay: number;
-  readonly kills: number;
+interface CopsAndCrimsLeaderboardSettings {
+  readonly mode: string;
+  readonly resetType: string;
 }
 ```
 
-### CopsAndCrimsGamemodeStats
+### CopsAndCrimsPrivateGames
 
-Per-gamemode stat block (used for `deathmatch` and extended by `gungame`).
+Read from the raw `privategames` object. Each field reads an `mcgo_private_<name>` raw key.
 
 ```ts
-export interface CopsAndCrimsGamemodeStats {
+interface CopsAndCrimsPrivateGames {
+  readonly mcgoPrivateChallengeMode: boolean;
+  readonly mcgoPrivateAfk: boolean;
+  readonly mcgoPrivateGunUpgrades: boolean;
+  readonly mcgoPrivateInfiniteAmmo: boolean;
+  readonly mcgoPrivateInstakill: boolean;
+  readonly mcgoPrivateMoneybags: boolean;
+}
+```
+
+---
+
+## Perks and points
+
+### CopsAndCrimsPerks
+
+```ts
+interface CopsAndCrimsPerks {
+  readonly baseCoin: CopsAndCrimsPerkBaseCoin;
+}
+```
+
+### CopsAndCrimsPerkBaseCoin
+
+Read from the raw `perk.base_coin` object.
+
+```ts
+interface CopsAndCrimsPerkBaseCoin {
   readonly kills: number;
-  readonly criminalKills: number;
-  readonly copKills: number;
-  readonly deaths: number;
-  readonly wins: number;
   readonly assists: number;
-  readonly gamePlays: number;
+  readonly allSources: number;
+  readonly defusalRoundWins: number;
+  readonly bombDefuses: number;
+  readonly deathmatchChallenges: number;
+  readonly bombPlants: number;
 }
 ```
 
-### CopsAndCrimsGungameStats
+| Field                  | Raw key                 |
+| ---------------------- | ----------------------- |
+| `allSources`           | `all_sources`           |
+| `defusalRoundWins`     | `defusal_round_wins`    |
+| `bombDefuses`          | `bomb_defuses`          |
+| `deathmatchChallenges` | `deathmatch_challenges` |
+| `bombPlants`           | `bomb_plants`           |
 
-Extends `CopsAndCrimsGamemodeStats` with gungame-specific fields.
+### CopsAndCrimsMcgo
+
+Read from the raw `mcgo` object.
 
 ```ts
-export interface CopsAndCrimsGungameStats extends CopsAndCrimsGamemodeStats {
-  readonly armorPacksCollected: number;
-  readonly carePackagesCollected: number;
-  readonly speedBoostsCollected: number;
-  readonly fastestWin: number;
+interface CopsAndCrimsMcgo {
+  readonly points: number;
 }
 ```
 
-### CopsAndCrimsTourneyStats
+---
 
-Tournament defusal stat block. The `tourneyDefusalA` and `tourneyDefusalB` fields use the raw key suffixes `0` and `1`.
+## Dated snapshots
+
+### CopsAndCrimsDatedSnapshots
+
+Each record collects dated raw keys (matching `^<prefix>_(\d+_)?\d+_2014$`) keyed by the date suffix (the `<prefix>_` removed). Records contain only the keys present in the raw data.
 
 ```ts
-export interface CopsAndCrimsTourneyStats {
-  readonly kills: number;
-  readonly criminalKills: number;
-  readonly copKills: number;
-  readonly deaths: number;
-  readonly wins: number;
-  readonly gamePlays: number;
-  readonly roundWins: number;
-  readonly bombsPlanted: number;
-  readonly bombsDefused: number;
-  readonly grenadeKills: number;
-  readonly headshotKills: number;
-  readonly shotsFired: number;
+interface CopsAndCrimsDatedSnapshots {
+  readonly kills: Readonly<Record<string, number>>;
+  readonly killsNew: Readonly<Record<string, number>>;
+  readonly gamesWins: Readonly<Record<string, number>>;
 }
 ```
+
+| Field       | Raw key prefix |
+| ----------- | -------------- |
+| `kills`     | `kills`        |
+| `killsNew`  | `killsNew`     |
+| `gamesWins` | `games_wins`   |
 

@@ -174,6 +174,7 @@ export interface MegaWallsAbilitySlotStats {
   readonly blazesSpawned: MegaWallsModeStats;
   readonly blocksBroken: MegaWallsModeStats;
   readonly damageDealt: MegaWallsModeStats;
+  readonly diamondOreBroken: MegaWallsModeStats;
   readonly defenderAssists: MegaWallsModeStats;
   readonly defenderFinalAssists: MegaWallsModeStats;
   readonly defenderFinalKills: MegaWallsModeStats;
@@ -209,10 +210,16 @@ export interface MegaWallsAbilitySlotStats {
   readonly activations: MegaWallsActivationStats;
 }
 
+export interface MegaWallsAbilityDSlotStats {
+  readonly activations: MegaWallsActivationStats;
+  readonly selfHealed: MegaWallsModeStats;
+}
+
 export interface MegaWallsAbilityGSlotStats {
   readonly activations: MegaWallsActivationStats;
   readonly amountHealed: MegaWallsModeStats;
   readonly darkMatterArmor: MegaWallsModeStats;
+  readonly selfHealed: MegaWallsModeStats;
 }
 
 export interface MegaWallsKitTiers {
@@ -227,6 +234,7 @@ export interface MegaWallsKitAbilitySlots {
   readonly a: MegaWallsAbilitySlotStats;
   readonly b: MegaWallsAbilitySlotStats;
   readonly c: MegaWallsAbilitySlotStats;
+  readonly d: MegaWallsAbilityDSlotStats;
   readonly g: MegaWallsAbilityGSlotStats;
 }
 
@@ -252,8 +260,12 @@ export interface MegaWallsClassBreakdown {
   readonly assists: number;
   readonly finalKills: number;
   readonly finalAssists: number;
+  readonly faceOffKills: number;
+  readonly faceOffFinalKills: number;
   readonly faceOffWins: number;
   readonly faceOffLosses: number;
+  readonly practiceKills: number;
+  readonly practiceFinalKills: number;
   readonly practiceWins: number;
   readonly practiceLosses: number;
 }
@@ -269,8 +281,10 @@ export interface MegaWallsWeeklyClassBreakdown {
   readonly wins: number;
   readonly losses: number;
   readonly finalKills: number;
+  readonly faceOffKills: number;
   readonly faceOffWins: number;
   readonly faceOffLosses: number;
+  readonly practiceKills: number;
   readonly practiceWins: number;
   readonly practiceLosses: number;
 }
@@ -281,23 +295,39 @@ export interface MegaWallsWeeklyStats {
   readonly wins: number;
   readonly losses: number;
   readonly finalKills: number;
+  readonly faceOffKills: number;
   readonly faceOffWins: number;
   readonly faceOffLosses: number;
+  readonly practiceKills: number;
   readonly practiceWins: number;
   readonly practiceLosses: number;
-  readonly byClass: Readonly<
-    Record<MegaWallsClass, MegaWallsWeeklyClassBreakdown>
-  >;
+  readonly byClass: Readonly<Record<string, MegaWallsWeeklyClassBreakdown>>;
   readonly finalKillsByTier: MegaWallsPeriodTierFinalKills;
+  readonly finalKillsByTierFaceOff: MegaWallsPeriodTierFinalKills;
+  readonly finalKillsByTierPractice: MegaWallsPeriodTierFinalKills;
   readonly finalKillsByClassTier: Readonly<
-    Record<MegaWallsClass, MegaWallsPeriodTierFinalKills>
+    Record<string, MegaWallsPeriodTierFinalKills>
+  >;
+  readonly finalKillsByClassTierFaceOff: Readonly<
+    Record<string, MegaWallsPeriodTierFinalKills>
+  >;
+  readonly finalKillsByClassTierPractice: Readonly<
+    Record<string, MegaWallsPeriodTierFinalKills>
   >;
 }
 
 export interface MegaWallsMonthlyStats {
   readonly finalKillsByTier: MegaWallsPeriodTierFinalKills;
+  readonly finalKillsByTierFaceOff: MegaWallsPeriodTierFinalKills;
+  readonly finalKillsByTierPractice: MegaWallsPeriodTierFinalKills;
   readonly finalKillsByClassTier: Readonly<
-    Record<MegaWallsClass, MegaWallsPeriodTierFinalKills>
+    Record<string, MegaWallsPeriodTierFinalKills>
+  >;
+  readonly finalKillsByClassTierFaceOff: Readonly<
+    Record<string, MegaWallsPeriodTierFinalKills>
+  >;
+  readonly finalKillsByClassTierPractice: Readonly<
+    Record<string, MegaWallsPeriodTierFinalKills>
   >;
 }
 
@@ -332,9 +362,16 @@ export interface MegaWallsClassProgress {
   readonly unlocked: boolean;
   readonly prestige: number;
   readonly enderchestRows: number;
+  readonly goldenTag: boolean;
+  readonly checked: boolean;
+  readonly checked2: boolean;
+  readonly checked3: boolean;
   readonly checked4: boolean;
+  readonly prestigeChecked: boolean;
+  readonly prestigeChecked2: boolean;
   readonly prestigeChecked4: boolean;
   readonly skillLevels: MegaWallsClassSkillLevels;
+  readonly skillLevelsChecked: MegaWallsClassSkillFlags;
   readonly skillLevelsChecked4: MegaWallsClassSkillFlags;
   readonly skillLevelsChecked5: MegaWallsClassSkillFlags;
   readonly prestigeTag: MegaWallsPrestigeTag;
@@ -353,6 +390,22 @@ export interface MegaWallsColorblindSettings {
 export interface MegaWallsLeaderboardSettings {
   readonly resetType: string;
   readonly class: string;
+}
+
+export interface MegaWallsHealthWarningSettings {
+  readonly half: boolean;
+  readonly low: boolean;
+  readonly veryLow: boolean;
+  readonly extremelyLow: boolean;
+  readonly dangerouslyLow: boolean;
+}
+
+export interface MegaWallsPrivateGameSettings {
+  readonly timeOfDay: string;
+  readonly preparationTime: string;
+  readonly witherHealth: string;
+  readonly instantDeathmatch: string;
+  readonly energyGain: string;
 }
 
 export interface MegaWallsStats {
@@ -380,25 +433,39 @@ export interface MegaWallsStats {
   readonly blood: boolean;
   readonly mutationsVisibility: boolean;
   readonly gvgDecide: boolean;
+  readonly gvgEverybodyVotes: boolean;
   readonly faceOffJoinNoParty: boolean;
   readonly toggleHints: boolean;
   readonly toggleNotifications: boolean;
+  readonly toggleSkillNotifications: boolean;
+  readonly toggleInGameNightVision: boolean;
   readonly witherHealthHearts: boolean;
+  readonly combatTracker: boolean;
+  readonly warcryShortcuts: boolean;
+  readonly tutorialCompleted: number;
+  readonly endGameLeaderboard: string;
   readonly colorblind: MegaWallsColorblindSettings;
   readonly packages: readonly string[];
   readonly cakesFoundByName: readonly string[];
   readonly votes: Readonly<Record<string, number>>;
   readonly chosenSkins: Readonly<Record<string, string>>;
+  readonly effects: Readonly<Record<string, string>>;
   readonly finalKillsLegacy: number;
+  readonly finalKillsFaceOffLegacy: number;
+  readonly finalKillsPracticeLegacy: number;
   readonly finalAssistsLegacy: number;
   readonly finalDeathsLegacy: number;
   readonly witherDamageLegacy: number;
   readonly killsNewLegacy: number;
+  readonly killsPracticeLegacy: number;
   readonly deathsNewLegacy: number;
   readonly cakesFound: MegaWallsModeStats;
   readonly plays: MegaWallsPlays;
   readonly stats: MegaWallsActivityStats;
-  readonly byClass: Readonly<Record<MegaWallsClass, MegaWallsClassBreakdown>>;
+  readonly byClass: Readonly<Record<string, MegaWallsClassBreakdown>>;
+  readonly legacyClassStats: Readonly<
+    Record<string, Readonly<Record<string, number>>>
+  >;
   readonly weekly: MegaWallsWeeklyStats;
   readonly monthly: MegaWallsMonthlyStats;
   readonly classes: Readonly<Record<string, MegaWallsClassProgress>>;
@@ -407,6 +474,8 @@ export interface MegaWallsStats {
     Record<string, Readonly<Record<string, string>>>
   >;
   readonly leaderboardSettings: MegaWallsLeaderboardSettings;
+  readonly healthWarningSettings: MegaWallsHealthWarningSettings;
+  readonly privateGameSettings: MegaWallsPrivateGameSettings;
 }
 
 const CLASSES: readonly MegaWallsClass[] = [
@@ -559,6 +628,7 @@ const ABILITY_SLOT_STATS: readonly string[] = [
   "blazes_spawned",
   "blocks_broken",
   "damage_dealt",
+  "diamond_ore_broken",
   "defender_assists",
   "defender_final_assists",
   "defender_final_kills",
@@ -693,6 +763,7 @@ const ABILITY_SLOT_KEYS: readonly (keyof MegaWallsAbilitySlotStats)[] = [
   "blazesSpawned",
   "blocksBroken",
   "damageDealt",
+  "diamondOreBroken",
   "defenderAssists",
   "defenderFinalAssists",
   "defenderFinalKills",
@@ -838,6 +909,16 @@ function abilitySlotStats(
   return out as MegaWallsAbilitySlotStats;
 }
 
+function abilityDSlotStats(
+  data: Record<string, unknown>,
+  prefix: string,
+): MegaWallsAbilityDSlotStats {
+  return {
+    activations: activationStats(data, prefix),
+    selfHealed: modeStats(data, `${prefix}self_healed`),
+  };
+}
+
 function abilityGSlotStats(
   data: Record<string, unknown>,
   prefix: string,
@@ -846,6 +927,7 @@ function abilityGSlotStats(
     activations: activationStats(data, prefix),
     amountHealed: modeStats(data, `${prefix}amount_healed`),
     darkMatterArmor: modeStats(data, `${prefix}dark_matter_armor`),
+    selfHealed: modeStats(data, `${prefix}self_healed`),
   };
 }
 
@@ -893,6 +975,7 @@ function kitStats(
       a: abilitySlotStats(data, `${prefix}a_`),
       b: abilitySlotStats(data, `${prefix}b_`),
       c: abilitySlotStats(data, `${prefix}c_`),
+      d: abilityDSlotStats(data, `${prefix}d_`),
       g: abilityGSlotStats(data, `${prefix}g_`),
     },
   };
@@ -900,7 +983,7 @@ function kitStats(
 
 function classBreakdown(
   data: Record<string, unknown>,
-  klass: MegaWallsClass,
+  klass: string,
 ): MegaWallsClassBreakdown {
   return {
     kills: num(data, `kills_${klass}`),
@@ -912,8 +995,12 @@ function classBreakdown(
     assists: num(data, `assists_${klass}`),
     finalKills: num(data, `finalKills_${klass}`),
     finalAssists: num(data, `finalAssists_${klass}`),
+    faceOffKills: num(data, `kills_face_off_${klass}`),
+    faceOffFinalKills: num(data, `finalKills_face_off_${klass}`),
     faceOffWins: num(data, `wins_face_off_${klass}`),
     faceOffLosses: num(data, `losses_face_off_${klass}`),
+    practiceKills: num(data, `kills_practice_${klass}`),
+    practiceFinalKills: num(data, `finalKills_practice_${klass}`),
     practiceWins: num(data, `wins_practice_${klass}`),
     practiceLosses: num(data, `losses_practice_${klass}`),
   };
@@ -921,7 +1008,7 @@ function classBreakdown(
 
 function weeklyClassBreakdown(
   data: Record<string, unknown>,
-  klass: MegaWallsClass,
+  klass: string,
 ): MegaWallsWeeklyClassBreakdown {
   return {
     kills: num(data, `weeklyKills_${klass}`),
@@ -929,8 +1016,10 @@ function weeklyClassBreakdown(
     wins: num(data, `weeklyWins_${klass}`),
     losses: num(data, `weeklyLosses_${klass}`),
     finalKills: num(data, `weeklyFinalKills_${klass}`),
+    faceOffKills: num(data, `weeklyKills_face_off_${klass}`),
     faceOffWins: num(data, `weeklyWins_face_off_${klass}`),
     faceOffLosses: num(data, `weeklyLosses_face_off_${klass}`),
+    practiceKills: num(data, `weeklyKills_practice_${klass}`),
     practiceWins: num(data, `weeklyWins_practice_${klass}`),
     practiceLosses: num(data, `weeklyLosses_practice_${klass}`),
   };
@@ -939,7 +1028,7 @@ function weeklyClassBreakdown(
 function periodTierFinalKills(
   data: Record<string, unknown>,
   period: string,
-  klass: MegaWallsClass,
+  klass: string,
 ): MegaWallsPeriodTierFinalKills {
   return {
     a: num(data, `${period}_finalKills_${klass}_a`),
@@ -947,11 +1036,39 @@ function periodTierFinalKills(
   };
 }
 
+function discoverClasses(stats: Record<string, unknown>): readonly string[] {
+  const out = new Set<string>(CLASSES);
+  const prefixes = [
+    "kills_",
+    "kills_new_",
+    "deaths_",
+    "deaths_new_",
+    "wins_",
+    "losses_",
+    "assists_",
+    "finalKills_",
+    "finalAssists_",
+  ];
+  for (const key of Object.keys(stats)) {
+    for (const prefix of prefixes) {
+      if (!key.startsWith(prefix)) {
+        continue;
+      }
+      const rest = key.slice(prefix.length);
+      if (rest === "null" || /^[A-Z][A-Za-z]*$/.test(rest)) {
+        out.add(rest);
+      }
+    }
+  }
+  return [...out];
+}
+
 function mapClasses<T>(
-  build: (klass: MegaWallsClass) => T,
-): Readonly<Record<MegaWallsClass, T>> {
-  const out = {} as Record<MegaWallsClass, T>;
-  for (const klass of CLASSES) {
+  classNames: readonly string[],
+  build: (klass: string) => T,
+): Readonly<Record<string, T>> {
+  const out: Record<string, T> = {};
+  for (const klass of classNames) {
     out[klass] = build(klass);
   }
   return out;
@@ -1011,9 +1128,16 @@ function parseClasses(
       unlocked: bool(progress, "unlocked"),
       prestige: num(progress, "prestige"),
       enderchestRows: num(progress, "enderchest_rows"),
+      goldenTag: bool(progress, "golden_tag"),
+      checked: bool(progress, "checked"),
+      checked2: bool(progress, "checked2"),
+      checked3: bool(progress, "checked3"),
       checked4: bool(progress, "checked4"),
+      prestigeChecked: bool(progress, "prestigeChecked"),
+      prestigeChecked2: bool(progress, "prestigeChecked2"),
       prestigeChecked4: bool(progress, "prestigeChecked4"),
       skillLevels: classSkillLevels(progress),
+      skillLevelsChecked: classSkillFlags(progress, "Checked"),
       skillLevelsChecked4: classSkillFlags(progress, "Checked4"),
       skillLevelsChecked5: classSkillFlags(progress, "Checked5"),
       prestigeTag: prestigeTag(progress),
@@ -1091,11 +1215,84 @@ function parseLeaderboardSettings(
   };
 }
 
+function parseHealthWarningSettings(
+  stats: Record<string, unknown>,
+): MegaWallsHealthWarningSettings {
+  const raw = stats.settings;
+  const settings =
+    typeof raw === "object" && raw !== null && !Array.isArray(raw)
+      ? (raw as Record<string, unknown>)
+      : {};
+  return {
+    half: bool(settings, "half"),
+    low: bool(settings, "low"),
+    veryLow: bool(settings, "veryLow"),
+    extremelyLow: bool(settings, "extremelyLow"),
+    dangerouslyLow: bool(settings, "dangerouslyLow"),
+  };
+}
+
+function parsePrivateGameSettings(
+  stats: Record<string, unknown>,
+): MegaWallsPrivateGameSettings {
+  const raw = stats.privategames;
+  const settings =
+    typeof raw === "object" && raw !== null && !Array.isArray(raw)
+      ? (raw as Record<string, unknown>)
+      : {};
+  return {
+    timeOfDay: str(settings, "time_of_day"),
+    preparationTime: str(settings, "preparation_time"),
+    witherHealth: str(settings, "wither_health"),
+    instantDeathmatch: str(settings, "instant_deathmatch"),
+    energyGain: str(settings, "energy_gain"),
+  };
+}
+
+function parseEffects(
+  stats: Record<string, unknown>,
+): Readonly<Record<string, string>> {
+  const out: Record<string, string> = {};
+  for (const key of Object.keys(stats)) {
+    if (key.endsWith("_effect") && typeof stats[key] === "string") {
+      out[key.slice(0, key.length - "_effect".length)] = stats[key] as string;
+    }
+  }
+  return out;
+}
+
+function parseLegacyClassStats(
+  stats: Record<string, unknown>,
+): Readonly<Record<string, Readonly<Record<string, number>>>> {
+  const out: Record<string, Record<string, number>> = {};
+  for (const key of Object.keys(stats)) {
+    if (!/^[A-Z]/.test(key) || key.endsWith("_effect")) {
+      continue;
+    }
+    const value = stats[key];
+    if (typeof value !== "number") {
+      continue;
+    }
+    const split = key.indexOf("_");
+    if (split <= 0) {
+      continue;
+    }
+    const klass = key.slice(0, split);
+    const stat = key.slice(split + 1);
+    (out[klass] ??= {})[stat] = value;
+  }
+  return out;
+}
+
 /** Parses a player's Mega Walls stats (`stats.Walls3`) into a typed object. */
 export function parseMegaWalls(
   stats: Record<string, unknown>,
 ): MegaWallsStats | null {
-  if (typeof stats !== "object" || stats === null) {
+  if (
+    typeof stats !== "object" ||
+    stats === null ||
+    Object.keys(stats).length === 0
+  ) {
     return null;
   }
 
@@ -1103,6 +1300,8 @@ export function parseMegaWalls(
   for (const kit of KITS) {
     kits[kit] = kitStats(stats, kit);
   }
+
+  const classNames = discoverClasses(stats);
 
   return {
     coins: num(stats, "coins"),
@@ -1129,10 +1328,17 @@ export function parseMegaWalls(
     blood: bool(stats, "blood"),
     mutationsVisibility: bool(stats, "mutations_visibility"),
     gvgDecide: bool(stats, "gvg_decide"),
+    gvgEverybodyVotes: bool(stats, "gvg_everybodyvotes"),
     faceOffJoinNoParty: bool(stats, "faceoff_join_noparty"),
     toggleHints: bool(stats, "toggle_hints"),
     toggleNotifications: bool(stats, "toggle_notifications"),
+    toggleSkillNotifications: bool(stats, "toggle_skill_notifications"),
+    toggleInGameNightVision: bool(stats, "toggle_in_game_night_vision"),
     witherHealthHearts: bool(stats, "wither_health_hearts"),
+    combatTracker: bool(stats, "combatTracker"),
+    warcryShortcuts: bool(stats, "warcry_shortcuts"),
+    tutorialCompleted: num(stats, "tutorial_completed"),
+    endGameLeaderboard: str(stats, "end_game_leaderboard"),
     colorblind: {
       enabled: bool(stats, "colorblind"),
       bold: bool(stats, "colorblind_bold"),
@@ -1146,11 +1352,15 @@ export function parseMegaWalls(
     cakesFoundByName: parseStringArray(stats.cakes_found_by_name),
     votes: parseVotes(stats),
     chosenSkins: parseChosenSkins(stats),
+    effects: parseEffects(stats),
     finalKillsLegacy: num(stats, "finalKills"),
+    finalKillsFaceOffLegacy: num(stats, "finalKills_face_off"),
+    finalKillsPracticeLegacy: num(stats, "finalKills_practice"),
     finalAssistsLegacy: num(stats, "finalAssists"),
     finalDeathsLegacy: num(stats, "finalDeaths"),
     witherDamageLegacy: num(stats, "witherDamage"),
     killsNewLegacy: num(stats, "kills_new"),
+    killsPracticeLegacy: num(stats, "kills_practice"),
     deathsNewLegacy: num(stats, "deaths_new"),
     cakesFound: modeStats(stats, "cakes_found"),
     plays: {
@@ -1159,24 +1369,45 @@ export function parseMegaWalls(
       practice: num(stats, "plays_practice"),
     },
     stats: activityStats(stats, ""),
-    byClass: mapClasses((klass) => classBreakdown(stats, klass)),
+    byClass: mapClasses(classNames, (klass) => classBreakdown(stats, klass)),
+    legacyClassStats: parseLegacyClassStats(stats),
     weekly: {
       kills: num(stats, "weeklyKills"),
       deaths: num(stats, "weeklyDeaths"),
       wins: num(stats, "weeklyWins"),
       losses: num(stats, "weeklyLosses"),
       finalKills: num(stats, "weeklyFinalKills"),
+      faceOffKills: num(stats, "weeklyKills_face_off"),
       faceOffWins: num(stats, "weeklyWins_face_off"),
       faceOffLosses: num(stats, "weeklyLosses_face_off"),
+      practiceKills: num(stats, "weeklyKills_practice"),
       practiceWins: num(stats, "weeklyWins_practice"),
       practiceLosses: num(stats, "weeklyLosses_practice"),
-      byClass: mapClasses((klass) => weeklyClassBreakdown(stats, klass)),
+      byClass: mapClasses(classNames, (klass) =>
+        weeklyClassBreakdown(stats, klass),
+      ),
       finalKillsByTier: {
         a: num(stats, "weekly_finalKills_a"),
         b: num(stats, "weekly_finalKills_b"),
       },
-      finalKillsByClassTier: mapClasses((klass) =>
+      finalKillsByTierFaceOff: periodTierFinalKills(
+        stats,
+        "weekly",
+        "face_off",
+      ),
+      finalKillsByTierPractice: periodTierFinalKills(
+        stats,
+        "weekly",
+        "practice",
+      ),
+      finalKillsByClassTier: mapClasses(classNames, (klass) =>
         periodTierFinalKills(stats, "weekly", klass),
+      ),
+      finalKillsByClassTierFaceOff: mapClasses(classNames, (klass) =>
+        periodTierFinalKills(stats, "weekly", `face_off_${klass}`),
+      ),
+      finalKillsByClassTierPractice: mapClasses(classNames, (klass) =>
+        periodTierFinalKills(stats, "weekly", `practice_${klass}`),
       ),
     },
     monthly: {
@@ -1184,14 +1415,32 @@ export function parseMegaWalls(
         a: num(stats, "monthly_finalKills_a"),
         b: num(stats, "monthly_finalKills_b"),
       },
-      finalKillsByClassTier: mapClasses((klass) =>
+      finalKillsByTierFaceOff: periodTierFinalKills(
+        stats,
+        "monthly",
+        "face_off",
+      ),
+      finalKillsByTierPractice: periodTierFinalKills(
+        stats,
+        "monthly",
+        "practice",
+      ),
+      finalKillsByClassTier: mapClasses(classNames, (klass) =>
         periodTierFinalKills(stats, "monthly", klass),
+      ),
+      finalKillsByClassTierFaceOff: mapClasses(classNames, (klass) =>
+        periodTierFinalKills(stats, "monthly", `face_off_${klass}`),
+      ),
+      finalKillsByClassTierPractice: mapClasses(classNames, (klass) =>
+        periodTierFinalKills(stats, "monthly", `practice_${klass}`),
       ),
     },
     classes: parseClasses(stats),
     kits,
     kitInventories: parseKitInventories(stats),
     leaderboardSettings: parseLeaderboardSettings(stats),
+    healthWarningSettings: parseHealthWarningSettings(stats),
+    privateGameSettings: parsePrivateGameSettings(stats),
   };
 }
 

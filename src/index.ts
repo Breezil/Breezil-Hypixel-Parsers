@@ -49,4 +49,12 @@ export * from "./walls";
 export * from "./warlords";
 export * from "./turbokartracers";
 export * from "./arenabrawl";
+export * from "./woolgames";
+export * from "./speeduhc";
+export * from "./skyclash";
+export * from "./truecombat";
+export * from "./legacy";
+export * from "./mainlobby";
+export * from "./housingstats";
+export * from "./skyblockstats";
 

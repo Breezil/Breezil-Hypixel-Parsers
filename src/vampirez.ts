@@ -15,9 +15,14 @@ export interface VampireZPeriodWins {
 
 export interface VampireZMapVotes {
   readonly cavern: number;
+  readonly church: number;
   readonly darkValley: number;
+  readonly dusk: number;
   readonly erias: number;
+  readonly kudong: number;
   readonly overhill: number;
+  readonly plundered: number;
+  readonly pyramids: number;
   readonly village: number;
 }
 
@@ -56,10 +61,17 @@ export interface VampireZStats {
   readonly usingOld: boolean;
   readonly usingOldVamp: boolean;
   readonly disableKillPing: boolean;
+  readonly combatTracker: boolean;
   readonly noStartingCompass: boolean;
   readonly noStartingGear: boolean;
+  readonly noStartingFood: boolean;
+  readonly noStartingPotion: boolean;
+  readonly noStartingTorch: boolean;
+  readonly disabledLootDrops: boolean;
   readonly prefixDisabled: boolean;
   readonly vampColor: string;
+  readonly vampireColor: string;
+  readonly survivorColor: string;
   readonly boughtDyeColors: readonly string[];
   readonly zombieKills: number;
   readonly zombieDoubler: number;
@@ -103,9 +115,14 @@ function parsePeriodWins(
 function parseMapVotes(vampireZ: Record<string, unknown>): VampireZMapVotes {
   return {
     cavern: num(vampireZ, "votes_Cavern"),
+    church: num(vampireZ, "votes_Church"),
     darkValley: num(vampireZ, "votes_Dark Valley"),
+    dusk: num(vampireZ, "votes_Dusk"),
     erias: num(vampireZ, "votes_Erias"),
+    kudong: num(vampireZ, "votes_Kudong"),
     overhill: num(vampireZ, "votes_Overhill"),
+    plundered: num(vampireZ, "votes_Plundered"),
+    pyramids: num(vampireZ, "votes_Pyramids"),
     village: num(vampireZ, "votes_Village"),
   };
 }
@@ -173,10 +190,17 @@ export function parseVampireZ(
     usingOld: bool(vampireZ, "using_old"),
     usingOldVamp: bool(vampireZ, "using_old_vamp"),
     disableKillPing: bool(vampireZ, "disable_kill_ping"),
+    combatTracker: bool(vampireZ, "combatTracker"),
     noStartingCompass: bool(vampireZ, "no_starting_compass"),
     noStartingGear: bool(vampireZ, "no_starting_gear"),
+    noStartingFood: bool(vampireZ, "no_starting_food"),
+    noStartingPotion: bool(vampireZ, "no_starting_potion"),
+    noStartingTorch: bool(vampireZ, "no_starting_torch"),
+    disabledLootDrops: bool(vampireZ, "disabled_loot_drops"),
     prefixDisabled: bool(vampireZ, "prefix_disabled"),
     vampColor: str(vampireZ, "vamp_color"),
+    vampireColor: str(vampireZ, "vampirecolor"),
+    survivorColor: str(vampireZ, "survivor_color"),
     boughtDyeColors: parseBoughtDyeColors(vampireZ),
     zombieKills: num(vampireZ, "zombie_kills"),
     zombieDoubler: num(vampireZ, "zombie_doubler"),

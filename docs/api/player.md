@@ -1,6 +1,6 @@
 # Player
 
-The player parser turns the raw Hypixel `/player` JSON into a single readonly, fully-typed `HypixelPlayer` object. It is strict-raw: every field mirrors the API exactly, with no computed levels, ratios, or aggregates of any kind.
+The player module exposes a single parser, `parsePlayer`, which mirrors the raw `/player` block of the Hypixel API field-for-field into readonly, fully-typed objects. Every value below is read straight from the raw JSON with no computation, no ratios, and no derived totals: raw JSON in, typed objects out.
 
 ## parsePlayer
 
@@ -10,16 +10,26 @@ Parses a player (`/player`) into a typed object, mapping the raw player payload 
 export function parsePlayer(raw: Record<string, unknown>): HypixelPlayer;
 ```
 
-### Null and empty behavior
+### Null / empty behavior
 
-- `parsePlayer` always returns a fully-populated `HypixelPlayer`; it never returns `null`.
-- Missing string fields become `""`; missing numeric fields become `0`; missing booleans become `false`.
-- `uuid` falls back to `"UNKNOWN"`, `nickname` falls back to `"UNKNOWN"`, `language` falls back to `"ENGLISH"`, and `channel` falls back to `"ALL"` when absent.
-- All `Date | null` fields are `null` when the raw timestamp is absent or non-positive.
-- Array fields (quests, parkour, advent rewards, firework storage, friend requests, etc.) become `[]` when absent.
-- Each per-game block in `stats` is `null` when that game's data is absent (see [HypixelPlayerStats](#hypixelplayerstats)).
+`parsePlayer` always returns a fully-populated `HypixelPlayer`; it never returns `null`. Missing fields are filled in by the safe readers used throughout the module:
 
-## HypixelPlayer
+- Missing or non-number values become `0`.
+- Missing or non-string values become `""`.
+- Boolean fields are `true` only when the raw value is exactly `true`, otherwise `false`.
+- Missing nested objects are treated as empty objects, so every nested block is still present and populated with the defaults above.
+- String-array and number-array fields become empty arrays (`[]`) when absent.
+- `Date | null` fields are `null` when the raw value is absent or not a positive epoch-ms number.
+- `uuid` and `nickname` fall back to `"UNKNOWN"`, `language` falls back to `"ENGLISH"`, and `channel` falls back to `"ALL"` when absent.
+- Each per-game block in `stats` is a parser result that may be `null` when that game's block is absent (see [HypixelPlayerStats](#hypixelplayerstats)).
+
+Dynamic maps (for example `claimedSoloBank`, `xmas2019`, `cooldowns`, `mapVotes`, and the seasonal `bingo` maps) contain only the keys present in the raw data, so they may be empty objects when no data exists.
+
+---
+
+## Returned type tree
+
+### HypixelPlayer
 
 The root object returned by `parsePlayer`.
 
@@ -54,6 +64,12 @@ export interface HypixelPlayer {
   readonly santaQuestStarted: boolean;
   readonly autoSpawnPet: boolean;
   readonly battlePassGlowStatus: boolean;
+  readonly clock: boolean;
+  readonly main2017Tutorial: boolean;
+  readonly mostRecentGameType: string;
+  readonly mapVotes: Record<string, Record<string, number>>;
+  readonly cachedData: HypixelPlayerCachedData;
+  readonly skyblockExtra: HypixelPlayerSkyBlockExtra;
   readonly chatEnabled: boolean;
   readonly disableTipMessages: boolean;
   readonly disabledProjectileTrails: boolean;
@@ -65,12 +81,14 @@ export interface HypixelPlayer {
   readonly lastLoginAt: Date | null;
   readonly lastLogoutAt: Date | null;
   readonly claimedCenturyCakeAt: Date | null;
+  readonly claimedCenturyCake200At: Date | null;
   readonly claimedYear143CakeAt: Date | null;
   readonly claimedPotatoWarCrownAt: Date | null;
   readonly claimedPotatoBasketAt: Date | null;
   readonly claimedPotatoTalismanAt: Date | null;
   readonly claimedSoloBank: Record<string, number>;
   readonly skyBlockFreeCookieAt: Date | null;
+  readonly lastMapVoteAt: Date | null;
   readonly flashingSale: HypixelPlayerFlashingSale;
   readonly challenges: Record<string, Record<string, number>>;
   readonly compassStats: Record<string, Record<string, number>>;
@@ -99,27 +117,31 @@ export interface HypixelPlayer {
 }
 ```
 
-Notable top-level fields:
+| Field                                                 | Notes                                                                                    |
+| ----------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| `id`                                                  | Internal Hypixel document id (raw `_id`).                                                |
+| `uuid`                                                | Player UUID, `"UNKNOWN"` when absent.                                                    |
+| `nickname`                                            | Display name (raw `displayname`), `"UNKNOWN"` when absent.                               |
+| `playerName`                                          | Raw `playername` value.                                                                  |
+| `staffRank`                                           | Raw `rank` (staff rank) value.                                                           |
+| `packageRank` / `newPackageRank`                      | Purchased rank fields.                                                                   |
+| `monthlyPackageRank` / `mostRecentMonthlyPackageRank` | Monthly (MVP++) rank fields.                                                             |
+| `networkExp`                                          | Network experience (raw, not a derived level).                                           |
+| `language`                                            | User language (raw `userLanguage`), `"ENGLISH"` when absent.                             |
+| `channel`                                             | Chat channel, `"ALL"` when absent.                                                       |
+| `giftsGrinch`                                         | Raw `gifts_grinch`.                                                                      |
+| `mapVotes`                                            | Nested number map from raw `map_votes`.                                                  |
+| `questAutoActivate`                                   | Raw `questSettings.autoActivate`.                                                        |
+| `chatEnabled`                                         | Raw `chat`.                                                                              |
+| `claimedSoloBank`                                     | Map keyed by the suffix after `claimed_solo_bank_`.                                      |
+| `dailyTwoKExpAt`                                      | Raw `eugene.dailyTwoKExp` timestamp.                                                     |
+| `xmas2019`                                            | Map keyed by the suffix after `xmas2019_`.                                               |
+| `challenges` / `compassStats`                         | Nested number maps from the raw fields of the same name.                                 |
+| `stats`                                               | Per-game and SkyBlock statistics blocks (see [HypixelPlayerStats](#hypixelplayerstats)). |
 
-| Field                                                 | Meaning                                             |
-| ----------------------------------------------------- | --------------------------------------------------- |
-| `id`                                                  | Internal Hypixel document id (raw `_id`).           |
-| `uuid`                                                | Player UUID, `"UNKNOWN"` when absent.               |
-| `nickname`                                            | Display name, `"UNKNOWN"` when absent.              |
-| `playerName`                                          | Raw `playername` value.                             |
-| `staffRank`                                           | Raw `rank` (staff rank) value.                      |
-| `packageRank` / `newPackageRank`                      | Purchased rank fields.                              |
-| `monthlyPackageRank` / `mostRecentMonthlyPackageRank` | Monthly (MVP++) rank fields.                        |
-| `networkExp`                                          | Network experience (raw, not a derived level).      |
-| `language`                                            | User language, `"ENGLISH"` when absent.             |
-| `channel`                                             | Chat channel, `"ALL"` when absent.                  |
-| `claimedSoloBank`                                     | Map keyed by the suffix after `claimed_solo_bank_`. |
-| `xmas2019`                                            | Map keyed by the suffix after `xmas2019_`.          |
-| `stats`                                               | Per-game statistics blocks (see below).             |
+### HypixelPlayerStats
 
-## HypixelPlayerStats
-
-Per-game statistics container. Each field is `null` when that game's block is absent in the raw stats. The per-game types are documented on their own pages.
+Per-game and SkyBlock statistics container. Each field is the result of the corresponding game's parser and is `null` when that game's block is absent or empty in the raw stats. The per-game types are documented on their own pages and are not re-documented here.
 
 ```ts
 export interface HypixelPlayerStats {
@@ -143,12 +165,90 @@ export interface HypixelPlayerStats {
   readonly warlords: WarlordsStats | null;
   readonly turboKartRacers: TurboKartRacersStats | null;
   readonly arenaBrawl: ArenaBrawlStats | null;
+  readonly woolGames: WoolGamesStats | null;
+  readonly speedUHC: SpeedUHCStats | null;
+  readonly skyClash: SkyClashStats | null;
+  readonly trueCombat: TrueCombatStats | null;
+  readonly legacy: LegacyStats | null;
+  readonly mainLobby: MainLobbyStats | null;
+  readonly housing: HousingStats | null;
+  readonly skyblock: SkyBlockStats | null;
 }
 ```
 
-Each per-game type is imported from its own module (`BedWarsStats` from `./bedwars`, `SkyWarsStats` from `./skywars`, and so on) and documented on the corresponding API page.
+Each per-game type is imported from its own module and documented on the corresponding API page:
 
-## HypixelPlayerFlashingSale
+| Field             | Type                   | Raw source           | Page                                            |
+| ----------------- | ---------------------- | -------------------- | ----------------------------------------------- |
+| `bedwars`         | `BedWarsStats`         | `stats.Bedwars`      | [BedWars](./modes/bedwars.md)                   |
+| `skywars`         | `SkyWarsStats`         | `stats`              | [SkyWars](./modes/skywars.md)                   |
+| `duels`           | `DuelsStats`           | `stats`              | [Duels](./modes/duels.md)                       |
+| `arcade`          | `ArcadeStats`          | `stats`              | [Arcade](./modes/arcade.md)                     |
+| `buildBattle`     | `BuildBattleStats`     | `stats`              | [Build Battle](./modes/buildbattle.md)          |
+| `murderMystery`   | `MurderMysteryStats`   | `stats`              | [Murder Mystery](./modes/murdermystery.md)      |
+| `tntGames`        | `TNTGamesStats`        | `stats`              | [TNT Games](./modes/tntgames.md)                |
+| `pit`             | `PitStats`             | `stats`              | [The Pit](./modes/pit.md)                       |
+| `megaWalls`       | `MegaWallsStats`       | `stats.Walls3`       | [Mega Walls](./modes/megawalls.md)              |
+| `blitz`           | `BlitzStats`           | `stats`              | [Blitz SG](./modes/blitz.md)                    |
+| `uhc`             | `UHCStats`             | `stats`              | [UHC](./modes/uhc.md)                           |
+| `smashHeroes`     | `SmashHeroesStats`     | `stats.SuperSmash`   | [Smash Heroes](./modes/smashheroes.md)          |
+| `copsAndCrims`    | `CopsAndCrimsStats`    | `stats`              | [Cops and Crims](./modes/copsandcrims.md)       |
+| `paintball`       | `PaintballStats`       | `stats`              | [Paintball](./modes/paintball.md)               |
+| `quakecraft`      | `QuakecraftStats`      | `stats`              | [Quakecraft](./modes/quakecraft.md)             |
+| `vampireZ`        | `VampireZStats`        | `stats`              | [VampireZ](./modes/vampirez.md)                 |
+| `walls`           | `WallsStats`           | `stats`              | [Walls](./modes/walls.md)                       |
+| `warlords`        | `WarlordsStats`        | `stats.Battleground` | [Warlords](./modes/warlords.md)                 |
+| `turboKartRacers` | `TurboKartRacersStats` | `stats.GingerBread`  | [Turbo Kart Racers](./modes/turbokartracers.md) |
+| `arenaBrawl`      | `ArenaBrawlStats`      | `stats`              | [Arena Brawl](./modes/arenabrawl.md)            |
+| `woolGames`       | `WoolGamesStats`       | `stats.WoolGames`    | [Wool Games](./modes/woolgames.md)              |
+| `speedUHC`        | `SpeedUHCStats`        | `stats.SpeedUHC`     | [Speed UHC](./modes/speeduhc.md)                |
+| `skyClash`        | `SkyClashStats`        | `stats.SkyClash`     | [SkyClash](./modes/skyclash.md)                 |
+| `trueCombat`      | `TrueCombatStats`      | `stats.TrueCombat`   | True Combat                                     |
+| `legacy`          | `LegacyStats`          | `stats.Legacy`       | [Legacy](./modes/legacy.md)                     |
+| `mainLobby`       | `MainLobbyStats`       | `stats.MainLobby`    | [Main Lobby](./modes/mainlobby.md)              |
+| `housing`         | `HousingStats`         | `stats.Housing`      | [Housing](./modes/housing.md)                   |
+| `skyblock`        | `SkyBlockStats`        | `stats.SkyBlock`     | [SkyBlock](#skyblockstats) (below)              |
+
+---
+
+## Top-level value blocks
+
+### HypixelPlayerCachedData
+
+Cached server-side values.
+
+```ts
+export interface HypixelPlayerCachedData {
+  readonly superstarMonths: HypixelPlayerCachedSuperstarMonths;
+}
+```
+
+### HypixelPlayerCachedSuperstarMonths
+
+Cached MVP++ (superstar) month count with its last-update timestamp.
+
+```ts
+export interface HypixelPlayerCachedSuperstarMonths {
+  readonly value: number;
+  readonly lastUpdatedAt: Date | null;
+}
+```
+
+Note: `lastUpdatedAt` maps from raw `lastUpdated`.
+
+### HypixelPlayerSkyBlockExtra
+
+Miscellaneous SkyBlock-related top-level values.
+
+```ts
+export interface HypixelPlayerSkyBlockExtra {
+  readonly ozanneCoins: number;
+}
+```
+
+Note: read from raw `skyblock_extra.ozanne_coins`.
+
+### HypixelPlayerFlashingSale
 
 Flashing-sale popup interaction counters.
 
@@ -161,7 +261,7 @@ export interface HypixelPlayerFlashingSale {
 }
 ```
 
-## HypixelPlayerLeveling
+### HypixelPlayerLeveling
 
 Network leveling reward claim state.
 
@@ -171,7 +271,7 @@ export interface HypixelPlayerLeveling {
 }
 ```
 
-## HypixelPlayerAnniversary
+### HypixelPlayerAnniversary
 
 Anniversary NPC progress for the 2020 event.
 
@@ -182,26 +282,34 @@ export interface HypixelPlayerAnniversary {
 }
 ```
 
-## HypixelPlayerCooldowns
+### HypixelPlayerCooldowns
 
-Per-event cooldown maps. Each field is a `Record<string, boolean>` keyed by the raw cooldown identifiers.
+Open-ended map of per-event cooldown families. The outer key is a raw cooldown family name with its trailing `Cooldowns` or `Cooldowns2` suffix stripped; the inner value is a `Record<string, boolean>` keyed by the raw cooldown identifiers. Only families present in the raw data appear.
 
 ```ts
-export interface HypixelPlayerCooldowns {
-  readonly specialty: Record<string, boolean>;
-  readonly holiday2016: Record<string, boolean>;
-  readonly halloween2016: Record<string, boolean>;
-  readonly halloween2019: Record<string, boolean>;
-  readonly halloween2021: Record<string, boolean>;
-  readonly christmas2019: Record<string, boolean>;
-  readonly easter2021: Record<string, boolean>;
-  readonly summer2020: Record<string, boolean>;
+export type HypixelPlayerCooldowns = Record<string, Record<string, boolean>>;
+```
+
+### HypixelPlayerRankPurchase
+
+Timestamps of when each rank was purchased / leveled up to.
+
+```ts
+export interface HypixelPlayerRankPurchase {
+  readonly vipAt: Date | null;
+  readonly vipPlusAt: Date | null;
+  readonly mvpAt: Date | null;
+  readonly mvpPlusAt: Date | null;
 }
 ```
 
-Note: `easter2021` maps from the raw `easter2021Cooldowns2` field.
+Note: these map from raw `levelUp_VIP`, `levelUp_VIP_PLUS`, `levelUp_MVP`, and `levelUp_MVP_PLUS`.
 
-## HypixelPlayerAchievements
+---
+
+## Achievements
+
+### HypixelPlayerAchievements
 
 Achievement points, rewards, tracking, and totem state.
 
@@ -213,23 +321,25 @@ export interface HypixelPlayerAchievements {
   readonly tiered: Record<string, number>;
   readonly oneTime: readonly string[];
   readonly oneTimeMenuSort: string;
+  readonly tieredMenuSort: string;
   readonly sync: Record<string, number>;
   readonly totem: HypixelPlayerAchievementsTotem;
 }
 ```
 
-| Field             | Meaning                                                                        |
-| ----------------- | ------------------------------------------------------------------------------ |
-| `points`          | Achievement points (from `_legacy_achievement_points` or `achievementPoints`). |
-| `rewards`         | Reward map keyed by the suffix after `for_points_`.                            |
-| `tracking`        | List of currently tracked achievements.                                        |
-| `tiered`          | Tiered achievement progress map.                                               |
-| `oneTime`         | List of unlocked one-time achievements.                                        |
-| `oneTimeMenuSort` | Raw menu sort preference.                                                      |
-| `sync`            | Achievement sync map.                                                          |
-| `totem`           | Totem customization state.                                                     |
+| Field             | Notes                                                                                |
+| ----------------- | ------------------------------------------------------------------------------------ |
+| `points`          | From `achievements._legacy_achievement_points`, falling back to `achievementPoints`. |
+| `rewards`         | Reward map keyed by the suffix after `for_points_`.                                  |
+| `tracking`        | List of currently tracked achievements (raw `achievementTracking`).                  |
+| `tiered`          | Tiered achievement progress map (raw `achievements`).                                |
+| `oneTime`         | List of unlocked one-time achievements (raw `achievementsOneTime`).                  |
+| `oneTimeMenuSort` | Raw `onetime_achievement_menu_sort`.                                                 |
+| `tieredMenuSort`  | Raw `tiered_achievement_menu_sort`.                                                  |
+| `sync`            | Achievement sync map (raw `achievementSync`).                                        |
+| `totem`           | Totem customization state.                                                           |
 
-## HypixelPlayerAchievementsTotem
+### HypixelPlayerAchievementsTotem
 
 Totem of corruption customization state.
 
@@ -244,7 +354,13 @@ export interface HypixelPlayerAchievementsTotem {
 }
 ```
 
-## HypixelPlayerCosmetics
+Note: `allowedMaxHeight` maps from raw `allowed_max_height`.
+
+---
+
+## Cosmetics and pets
+
+### HypixelPlayerCosmetics
 
 Cosmetic selections, vanity state, and pets.
 
@@ -257,6 +373,8 @@ export interface HypixelPlayerCosmetics {
   readonly gadget: string;
   readonly selectedParticlePack: string;
   readonly clickEffect: string;
+  readonly cloak: string;
+  readonly emote: string;
   readonly disguise: string;
   readonly transformation: string;
   readonly wardrobe: string;
@@ -268,7 +386,19 @@ export interface HypixelPlayerCosmetics {
 }
 ```
 
-## HypixelPlayerPets
+| Field                  | Notes                                    |
+| ---------------------- | ---------------------------------------- |
+| `menuSort`             | Raw `collectibles_menu_sort`.            |
+| `selectedGadget`       | Raw `currentGadget`.                     |
+| `selectedParticlePack` | Raw `particlePack`.                      |
+| `clickEffect`          | Raw `currentClickEffect`.                |
+| `cloak`                | Raw `currentCloak`.                      |
+| `emote`                | Raw `currentEmote`.                      |
+| `boxesConvertedToday`  | Raw `vanityConvertedBoxToday`.           |
+| `firstBoxConvertedAt`  | Raw `vanityFirstConvertedBox` timestamp. |
+| `packages`             | Raw `vanityMeta.packages`.               |
+
+### HypixelPlayerPets
 
 Pet container: current pet, favorites, consumables, and owned pets.
 
@@ -283,7 +413,9 @@ export interface HypixelPlayerPets {
 }
 ```
 
-## HypixelPlayerPet
+Note: `favorites` maps from raw `vanityFavorites`; `autoSpawn` from raw `auto_spawn_pet`; `lastJourneyAt` from raw `petJourneyTimestamp`. `owned` is built from each `vanityMeta.packages` entry starting with `pet_`.
+
+### HypixelPlayerPet
 
 A single owned pet with its stats.
 
@@ -301,7 +433,18 @@ export interface HypixelPlayerPet {
 }
 ```
 
-## HypixelPlayerPetConsumables
+| Field             | Notes                                          |
+| ----------------- | ---------------------------------------------- |
+| `name`            | Pet package id with the `pet_` prefix removed. |
+| `nickname`        | Raw `petStats.<NAME>.name`.                    |
+| `hunger`          | Raw `petStats.<NAME>.HUNGER.value`.            |
+| `lastFedAt`       | Raw `petStats.<NAME>.HUNGER.timestamp`.        |
+| `thirst`          | Raw `petStats.<NAME>.THIRST.value`.            |
+| `lastDrankAt`     | Raw `petStats.<NAME>.THIRST.timestamp`.        |
+| `exercise`        | Raw `petStats.<NAME>.EXERCISE.value`.          |
+| `lastExercisedAt` | Raw `petStats.<NAME>.EXERCISE.timestamp`.      |
+
+### HypixelPlayerPetConsumables
 
 Counts of each pet consumable item.
 
@@ -337,22 +480,13 @@ export interface HypixelPlayerPetConsumables {
 }
 ```
 
-Note: `carrot` maps from the raw `CARROT_ITEM` field.
+Note: `carrot` maps from the raw `CARROT_ITEM` field; all other fields map from the uppercase item id (`CAKE`, `COOKIE`, `GOLD_RECORD`, and so on).
 
-## HypixelPlayerRankPurchase
+---
 
-Timestamps of when each rank was purchased / leveled up to.
+## Rewards, gifting, and crates
 
-```ts
-export interface HypixelPlayerRankPurchase {
-  readonly vipAt: Date | null;
-  readonly vipPlusAt: Date | null;
-  readonly mvpAt: Date | null;
-  readonly mvpPlusAt: Date | null;
-}
-```
-
-## HypixelPlayerRewards
+### HypixelPlayerRewards
 
 Daily reward streak and crate state.
 
@@ -372,13 +506,13 @@ export interface HypixelPlayerRewards {
 }
 ```
 
-| Field           | Meaning                                                   |
+| Field           | Notes                                                     |
 | --------------- | --------------------------------------------------------- |
 | `rewardTokens`  | Token balance (raw `adsense_tokens`).                     |
 | `monthlyCrates` | One entry per key in raw `monthlycrates`, keyed by month. |
 | `dmCrates`      | One entry per raw key starting with `dmcrates-`.          |
 
-## HypixelPlayerMonthlyCrate
+### HypixelPlayerMonthlyCrate
 
 A single monthly or DM crate, keyed by date string, with a flag per rank tier.
 
@@ -395,9 +529,9 @@ export interface HypixelPlayerMonthlyCrate {
 
 Note: `regular` is `true` when either the raw `REGULAR` or `NORMAL` flag is set.
 
-## HypixelPlayerGifting
+### HypixelPlayerGifting
 
-Gifting and bundle statistics.
+Gifting and bundle statistics (read from raw `giftingMeta`).
 
 ```ts
 export interface HypixelPlayerGifting {
@@ -413,7 +547,13 @@ export interface HypixelPlayerGifting {
 }
 ```
 
-## HypixelPlayerSocialMedia
+Note: `rankGiftingMilestones` maps from raw `rankgiftingmilestones`.
+
+---
+
+## Social media and housing
+
+### HypixelPlayerSocialMedia
 
 Linked social media handles plus a raw verification map.
 
@@ -426,21 +566,24 @@ export interface HypixelPlayerSocialMedia {
   readonly twitter: string;
   readonly instagram: string;
   readonly tiktok: string;
+  readonly prompt: boolean;
   readonly verification: Record<string, string>;
 }
 ```
 
-The named fields come from `socialMedia.links`; `verification` contains every other string-valued key under `socialMedia` (excluding `links`).
+The named handle fields come from `socialMedia.links`; `prompt` comes from `socialMedia.prompt`; `verification` contains every other string-valued key under `socialMedia` (excluding `links`).
 
-## HypixelPlayerHousing
+### HypixelPlayerHousing
 
-Housing meta: unlocked content, settings, and given-cookie history.
+Housing meta: unlocked content, settings, and given-cookie history (read from raw `housingMeta`).
 
 ```ts
 export interface HypixelPlayerHousing {
   readonly allowedBlocks: readonly string[];
   readonly packages: readonly string[];
   readonly tutorialStage: string;
+  readonly playlist: string;
+  readonly plotSize: string;
   readonly firstHouseJoinAt: Date | null;
   readonly visibilityDisabled: boolean;
   readonly selectedChannels: readonly string[];
@@ -449,9 +592,9 @@ export interface HypixelPlayerHousing {
 }
 ```
 
-Note: `tutorialStage` maps from raw `tutorialStep`; `selectedChannels` maps from raw `selectedChannels_v3`.
+Note: `tutorialStage` maps from raw `tutorialStep`; `firstHouseJoinAt` from raw `firstHouseJoinMs`; `selectedChannels` from raw `selectedChannels_v3`.
 
-## HypixelPlayerGivenCookies
+### HypixelPlayerGivenCookies
 
 A given-cookies record for a single date, listing the houses cookies were given to.
 
@@ -464,7 +607,11 @@ export interface HypixelPlayerGivenCookies {
 
 One entry is produced per raw key starting with `given_cookies_`; `date` is the suffix after that prefix.
 
-## HypixelPlayerQuest
+---
+
+## Quests and parkour
+
+### HypixelPlayerQuest
 
 A quest with its completion history.
 
@@ -475,7 +622,7 @@ export interface HypixelPlayerQuest {
 }
 ```
 
-## HypixelPlayerQuestCompletion
+### HypixelPlayerQuestCompletion
 
 A single quest completion timestamp.
 
@@ -485,7 +632,9 @@ export interface HypixelPlayerQuestCompletion {
 }
 ```
 
-## HypixelPlayerParkour
+Note: `completedAt` is derived from the raw completion entry's `time` field.
+
+### HypixelPlayerParkour
 
 A parkour run record for one location.
 
@@ -498,14 +647,18 @@ export interface HypixelPlayerParkour {
 }
 ```
 
-| Field         | Meaning                                                               |
+| Field         | Notes                                                                 |
 | ------------- | --------------------------------------------------------------------- |
 | `location`    | Parkour location key (raw key under `parkourCompletions`).            |
 | `timeStart`   | Start time of the first recorded run.                                 |
 | `timeTook`    | Duration of the first recorded run.                                   |
 | `checkpoints` | Best checkpoint times from `parkourCheckpointBests` for the location. |
 
-## HypixelPlayerAdventRewards
+---
+
+## Advent rewards and seasonal events
+
+### HypixelPlayerAdventRewards
 
 Advent calendar reward claims for a given year.
 
@@ -516,9 +669,9 @@ export interface HypixelPlayerAdventRewards {
 }
 ```
 
-Entries come from raw keys starting with `adventRewards`; the four-digit year is parsed from the key (`0` when none is found). `days` always contains 25 entries (day 1 through day 25).
+Top-level entries come from raw keys starting with `adventRewards`; the four-digit year is parsed from the key (`0` when none is found). `days` always contains 25 entries (day 1 through day 25).
 
-## HypixelPlayerAdventDay
+### HypixelPlayerAdventDay
 
 A single advent calendar day claim.
 
@@ -529,19 +682,78 @@ export interface HypixelPlayerAdventDay {
 }
 ```
 
-## HypixelPlayerSeasonal
+Note: `claimedAt` is read from the raw `day<N>` field.
 
-Seasonal event data.
+### HypixelPlayerSeasonal
+
+Seasonal event data: silver balance, event shop sorting, and one list per seasonal event family.
 
 ```ts
 export interface HypixelPlayerSeasonal {
+  readonly silver: number;
+  readonly eventShopSorting: HypixelPlayerSeasonalEventShopSorting;
+  readonly christmas: readonly HypixelPlayerSeasonalEvent[];
+  readonly easter: readonly HypixelPlayerSeasonalEvent[];
+  readonly halloween: readonly HypixelPlayerSeasonalEvent[];
+  readonly summer: readonly HypixelPlayerSeasonalEvent[];
+  readonly anniversary: readonly HypixelPlayerSeasonalEvent[];
   readonly christmasAdventRewards: readonly HypixelPlayerAdventRewards[];
 }
 ```
 
-`christmasAdventRewards` is built from `seasonal.christmas`, one entry per year, each with its 25 advent days.
+Each event-family list (`christmas`, `easter`, `halloween`, `summer`, `anniversary`) is read from `seasonal.<family>`, with one `HypixelPlayerSeasonalEvent` per year key. `christmasAdventRewards` is built from `seasonal.christmas`, one entry per year, each with its 25 advent days read from that year's `adventRewards`.
 
-## HypixelPlayerScorpiusBribe
+### HypixelPlayerSeasonalEventShopSorting
+
+Seasonal event-shop sort preference.
+
+```ts
+export interface HypixelPlayerSeasonalEventShopSorting {
+  readonly currentSort: string;
+  readonly ownedFirst: boolean;
+}
+```
+
+### HypixelPlayerSeasonalEvent
+
+A single seasonal event for one year within an event family.
+
+```ts
+export interface HypixelPlayerSeasonalEvent {
+  readonly year: string;
+  readonly experience: number;
+  readonly adventRewards: Record<string, number>;
+  readonly presents: Record<string, boolean>;
+  readonly completedHolidayQuests: number;
+  readonly bedWarsWinsAchievement: number;
+  readonly duelsWinsAchievement: number;
+  readonly skyBlockAlchemistIntro: boolean;
+  readonly eggs: Record<string, boolean>;
+  readonly mainLobbyEgghunt: Record<string, boolean>;
+  readonly candyHuntBaskets: readonly number[];
+  readonly bingoPinned: string;
+  readonly bingo: Record<string, Record<string, number>>;
+}
+```
+
+| Field                    | Notes                                                              |
+| ------------------------ | ------------------------------------------------------------------ |
+| `year`                   | The raw year key for this event.                                   |
+| `experience`             | Raw `levelling.experience`.                                        |
+| `adventRewards`          | Number map from raw `adventRewards`.                               |
+| `presents`               | Boolean map from raw `presents`.                                   |
+| `completedHolidayQuests` | Raw `completed_holiday_quests`.                                    |
+| `eggs`                   | Boolean map from raw `egghunt.eggs`.                               |
+| `mainLobbyEgghunt`       | Boolean map keyed by the suffix after `mainlobby_egghunt_`.        |
+| `candyHuntBaskets`       | Number list from raw `candyhunt.baskets`.                          |
+| `bingoPinned`            | Raw `bingo.pinned`.                                                |
+| `bingo`                  | Per-bingo-card map; each card maps to its `objectives` number map. |
+
+---
+
+## Scorpius, tourney, fireworks, and friends
+
+### HypixelPlayerScorpiusBribe
 
 A Scorpius bribe claim for a given year.
 
@@ -554,9 +766,9 @@ export interface HypixelPlayerScorpiusBribe {
 
 One entry is produced per raw key starting with `scorpius_bribe_`; `year` is parsed from the suffix (`0` when not numeric).
 
-## HypixelPlayerTourney
+### HypixelPlayerTourney
 
-Tournament meta: first lobby join, total tributes, and per-tournament entries.
+Tournament meta: first lobby join, total tributes, and per-tournament entries (read from raw `tourney`).
 
 ```ts
 export interface HypixelPlayerTourney {
@@ -566,7 +778,9 @@ export interface HypixelPlayerTourney {
 }
 ```
 
-## HypixelPlayerTournamentEntry
+Note: `firstJoinLobbyAt` maps from raw `first_join_lobby`; `totalTributes` from raw `total_tributes`. `entries` is built from every object-valued key under `tourney`.
+
+### HypixelPlayerTournamentEntry
 
 A single tournament entry, keyed by the raw tournament key.
 
@@ -583,11 +797,18 @@ export interface HypixelPlayerTournamentEntry {
 }
 ```
 
-Note: `seenRewardBook` maps from raw `seenRPbook`.
+| Field                    | Notes                         |
+| ------------------------ | ----------------------------- |
+| `gamesPlayed`            | Raw `games_played`.           |
+| `tributesEarned`         | Raw `tributes_earned`.        |
+| `firstWinAt`             | Raw `first_win` timestamp.    |
+| `firstGameAt`            | Raw `first_game` timestamp.   |
+| `claimedRankingRewardAt` | Raw `claimed_ranking_reward`. |
+| `seenRewardBook`         | Raw `seenRPbook`.             |
 
-## HypixelPlayerFirework
+### HypixelPlayerFirework
 
-A stored firework configuration.
+A stored firework configuration (from raw `fireworkStorage`).
 
 ```ts
 export interface HypixelPlayerFirework {
@@ -602,4 +823,33 @@ export interface HypixelPlayerFirework {
 ```
 
 Note: `flightDuration` maps from raw `flight_duration` and `fadeColors` from raw `fade_colors`.
+
+---
+
+## SkyBlock pointer block
+
+### SkyBlockStats
+
+The per-player SkyBlock pointer block (raw `stats.SkyBlock`). Parsed by `parseSkyBlockStats`, which returns `null` when the raw block is empty. This block only points at the player's SkyBlock profiles; full profile data lives behind the SkyBlock profile API, not here.
+
+```ts
+export interface SkyBlockStats {
+  readonly profiles: Record<string, SkyBlockStatsProfile>;
+}
+```
+
+`profiles` is keyed by raw profile id, containing one entry per object-valued profile under raw `profiles`.
+
+### SkyBlockStatsProfile
+
+A single SkyBlock profile pointer.
+
+```ts
+export interface SkyBlockStatsProfile {
+  readonly profileId: string;
+  readonly cuteName: string;
+}
+```
+
+Note: `profileId` maps from raw `profile_id` and `cuteName` from raw `cute_name`.
 

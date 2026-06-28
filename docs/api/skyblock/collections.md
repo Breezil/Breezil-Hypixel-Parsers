@@ -1,25 +1,118 @@
-# Museum, Garden, News, Fire Sales & Bingo
+# Museum, Garden, Fire Sales, News & Bingo
 
-This page documents the SkyBlock parsers for museum donations, the garden, the news feed, global fire sales, and a player's bingo events. Every parser is strict-raw: it mirrors the raw Hypixel API JSON field-for-field into readonly, fully-typed objects and performs zero computation.
+These parsers cover a group of SkyBlock endpoints: the museum (`skyblock-museum.ts`), the garden and fire sales (`skyblock-misc.ts`), the news feed (`skyblock-news.ts`), and bingo (`skyblock-bingo.ts` for a player's bingo card, plus the bingo event resource in `skyblock-resources.ts`). Each function mirrors the raw Hypixel API JSON field-for-field into readonly, fully-typed objects with no computation or derived values. Missing numbers become `0`, missing strings become `""`, boolean fields are `true` only when the raw value is exactly `true`, and epoch-ms timestamps become `Date` or `null`.
 
 ## parseMuseum
 
-Parses a SkyBlock museum (`/skyblock/museum`) into a typed object, keyed by member UUID.
+Parses a SkyBlock museum (`/skyblock/museum`) into a typed object keyed by member uuid.
 
 ```ts
-export function parseMuseum(members: Record<string, unknown>): SkyBlockMuseum;
+function parseMuseum(members: Record<string, unknown>): SkyBlockMuseum;
 ```
 
-### Returned types
+### Null / empty behavior
+
+- Every key in the raw `members` object becomes an entry in the returned `members` map; non-object member values are read as empty objects (so the member is still present with defaults).
+- Within a member, `items` is built from the keys of the raw `items` object; `special` is `[]` when raw `special` is missing or not an array, with non-object entries skipped.
+- `featuredSlot` and `data` are `null` when the raw value is empty.
+- Donation `items` are NBT items decoded from the donation `data`; they may be empty when the data is missing or cannot be decoded.
+- The function always returns a `SkyBlockMuseum`, never `null`.
+
+## parseGarden
+
+Parses a SkyBlock garden (`/skyblock/garden`) into a typed object.
 
 ```ts
-export interface SkyBlockMuseum {
+function parseGarden(garden: Record<string, unknown>): SkyBlockGarden;
+```
+
+### Null / empty behavior
+
+- `currentVisitors` is built from the raw `active_commissions` object; only non-array object values become visitors. Each visitor's `requirements` and `bonusRewards` are `[]` when the raw `requirement` / `bonus_rewards` fields are missing or not arrays (non-object entries are filtered out).
+- `unlockedBarnSkins` and `unlockedPlots` are `[]` when their raw arrays are absent; non-string entries are filtered.
+- `greenhouseSlots` is `[]` when raw `greenhouse_slots` is missing or not an array.
+- Timestamp fields are exposed both as a raw number (`*Timestamp` / `lastSaveTimestamp`) and as a `Date | null` (`*At`).
+- The function always returns a `SkyBlockGarden`, never `null`.
+
+## parseFireSales
+
+Parses the SkyBlock fire sales (`/skyblock/firesales`) into an array.
+
+```ts
+function parseFireSales(sales: unknown[]): SkyBlockFireSale[];
+```
+
+### Null / empty behavior
+
+- Entries that are not non-array objects are skipped.
+- Each entry exposes the start/end timestamps both as raw numbers (`startTimestamp` / `endTimestamp`) and as `Date | null` (`startAt` / `endAt`).
+- Always returns an array (possibly empty), never `null`.
+
+## parseSkyBlockNews
+
+Parses the SkyBlock news (`/skyblock/news`) into an array.
+
+```ts
+function parseSkyBlockNews(items: unknown[]): SkyBlockNewsItem[];
+```
+
+### Null / empty behavior
+
+- Entries that are not non-array objects are skipped.
+- `item.material` reads the raw nested `item.material`; missing strings become `""`.
+- Always returns an array (possibly empty), never `null`.
+
+## parsePlayerBingo
+
+Parses a player's SkyBlock bingo (`/skyblock/bingo`) into an array of bingo events.
+
+```ts
+function parsePlayerBingo(
+  data: Record<string, unknown>,
+): readonly PlayerBingoEvent[];
+```
+
+### Null / empty behavior
+
+- Reads the raw `events` array; when it is missing or not an array the result is empty. Non-object entries are filtered out.
+- `completedGoals` is `[]` when the raw `completed_goals` is missing or not an array; non-string entries are filtered.
+- Always returns an array (possibly empty), never `null`.
+
+## parseSkyBlockBingo
+
+Parses the SkyBlock bingo event resource (`/resources/skyblock/bingo`) into a typed object. This parser is exported from the resources module (`skyblock-resources.ts`).
+
+```ts
+function parseSkyBlockBingo(
+  raw: Record<string, unknown>,
+): SkyBlockBingoResource | null;
+```
+
+### Null / empty behavior
+
+- Returns `null` when `raw` is not a non-array object.
+- `goals` is built from the raw `goals` array (non-object entries skipped); each goal's `fullLore` and `tiers` are `[]` when missing or not arrays.
+- A goal's `requiredAmount` is the raw `requiredAmount` when it is a number, otherwise `null`.
+- `lastUpdated`, `start`, and `end` are `null` when their epoch-ms timestamps are absent or unparseable.
+
+---
+
+## Returned type tree
+
+### SkyBlockMuseum
+
+The object returned by `parseMuseum`.
+
+```ts
+interface SkyBlockMuseum {
   readonly members: Record<string, SkyBlockMuseumMember>;
 }
 ```
 
+### SkyBlockMuseumMember
+
 ```ts
-export interface SkyBlockMuseumMember {
+interface SkyBlockMuseumMember {
   readonly value: number;
   readonly appraisal: boolean;
   readonly items: readonly SkyBlockMuseumItem[];
@@ -27,14 +120,19 @@ export interface SkyBlockMuseumMember {
 }
 ```
 
-```ts
-export interface SkyBlockMuseumItem extends SkyBlockMuseumDonation {
-  readonly name: string;
-}
-```
+| Field       | Notes                                           |
+| ----------- | ----------------------------------------------- |
+| `value`     | Total appraisal value (raw `value`).            |
+| `appraisal` | Whether appraisal is enabled (raw `appraisal`). |
+| `items`     | One entry per key of the raw `items` object.    |
+| `special`   | Special donations from raw `special`.           |
+
+### SkyBlockMuseumDonation
+
+The base shape of a museum donation. Also the element type of `SkyBlockMuseumMember.special`.
 
 ```ts
-export interface SkyBlockMuseumDonation {
+interface SkyBlockMuseumDonation {
   readonly donatedAt: Date | null;
   readonly featuredSlot: string | null;
   readonly borrowing: boolean;
@@ -44,85 +142,33 @@ export interface SkyBlockMuseumDonation {
 }
 ```
 
-| Field          | Notes                                                          |
-| -------------- | -------------------------------------------------------------- |
-| `donatedAt`    | Mapped from `donated_time`; `null` when absent.                |
-| `featuredSlot` | Mapped from `featured_slot`; `null` when empty.                |
-| `borrowing`    | Mapped from `borrowing`.                                       |
-| `type`         | Read from the nested `items.type`.                             |
-| `data`         | The raw item byte string from `items.data`; `null` when empty. |
-| `items`        | The decoded NBT items from `data` (see `NbtItem` below).       |
+| Field          | Notes                                                      |
+| -------------- | ---------------------------------------------------------- |
+| `donatedAt`    | Donation timestamp (raw `donated_time`).                   |
+| `featuredSlot` | Featured slot (raw `featured_slot`), or `null` when empty. |
+| `borrowing`    | Whether the item is borrowed (raw `borrowing`).            |
+| `type`         | Raw `items.type`.                                          |
+| `data`         | Raw base64/gzip item bytes (raw `items.data`), or `null`.  |
+| `items`        | NBT items decoded from `data`.                             |
 
-The `name` field on `SkyBlockMuseumItem` is the museum item key (the object key under `items`).
+### SkyBlockMuseumItem
 
-#### Referenced NBT types
-
-`SkyBlockMuseumDonation.items` is a list of `NbtItem`, defined in the NBT module and reproduced here for completeness.
+Extends `SkyBlockMuseumDonation` with the item's name (the key under the raw `items` object). The element type of `SkyBlockMuseumMember.items`.
 
 ```ts
-export interface NbtItem {
-  readonly id: number;
-  readonly count: number;
-  readonly damage: number;
-  readonly tag: NbtItemTag;
-}
-```
-
-```ts
-export interface NbtItemTag {
-  readonly display: NbtItemDisplay;
-  readonly enchantments: readonly NbtEnchantment[];
-  readonly extraAttributes: NbtExtraAttributes;
-  readonly raw: NbtCompound;
-}
-```
-
-```ts
-export interface NbtItemDisplay {
+interface SkyBlockMuseumItem extends SkyBlockMuseumDonation {
   readonly name: string;
-  readonly lore: readonly string[];
-  readonly color: number | null;
 }
 ```
 
-```ts
-export interface NbtEnchantment {
-  readonly id: number;
-  readonly level: number;
-}
-```
+The donation `items` field uses the `NbtItem` tree, documented on the [Bazaar & Auctions](./economy.md#decoded-nbt-item-types) page.
+
+### SkyBlockGarden
+
+The object returned by `parseGarden`.
 
 ```ts
-export interface NbtExtraAttributes {
-  readonly id: string;
-  readonly uuid: string | null;
-  readonly timestamp: string | number | readonly [number, number] | null;
-  readonly rarity_upgrades: number;
-  readonly modifier: string | null;
-  readonly enchantments: Readonly<Record<string, number>>;
-  readonly hot_potato_count: number;
-  readonly [key: string]: unknown;
-}
-```
-
-```ts
-export type NbtCompound = Readonly<Record<string, unknown>>;
-```
-
-**Null/empty behavior:** Each member entry is parsed from the input record. `special` is an empty array when the raw `special` value is not an array. `items` (decoded NBT) is an empty array when `data` is empty or cannot be decoded.
-
-## parseGarden
-
-Parses a SkyBlock garden (`/skyblock/garden`) into a typed object.
-
-```ts
-export function parseGarden(garden: Record<string, unknown>): SkyBlockGarden;
-```
-
-### Returned types
-
-```ts
-export interface SkyBlockGarden {
+interface SkyBlockGarden {
   readonly uuid: string;
   readonly gardenExperience: number;
   readonly barnSkin: string;
@@ -140,25 +186,28 @@ export interface SkyBlockGarden {
 }
 ```
 
-| Field                      | Raw source                              |
-| -------------------------- | --------------------------------------- |
-| `uuid`                     | `uuid`                                  |
-| `gardenExperience`         | `garden_experience`                     |
-| `barnSkin`                 | `selected_barn_skin`                    |
-| `unlockedBarnSkins`        | `unlocked_barn_skins`                   |
-| `unlockedPlots`            | `unlocked_plots_ids`                    |
-| `visitors`                 | `commission_data`                       |
-| `currentVisitors`          | `active_commissions` (each keyed entry) |
-| `cropMilestones`           | `resources_collected`                   |
-| `composter`                | `composter_data`                        |
-| `cropUpgrades`             | `crop_upgrade_levels`                   |
-| `gardenUpgrades`           | `garden_upgrades`                       |
-| `greenhouseSlots`          | `greenhouse_slots`                      |
-| `lastGrowthStageTimestamp` | `last_growth_stage_time`                |
-| `lastGrowthStageAt`        | `last_growth_stage_time` (as `Date`)    |
+| Field                                            | Notes                                                 |
+| ------------------------------------------------ | ----------------------------------------------------- |
+| `uuid`                                           | Garden uuid (raw `uuid`).                             |
+| `gardenExperience`                               | Raw `garden_experience`.                              |
+| `barnSkin`                                       | Selected barn skin (raw `selected_barn_skin`).        |
+| `unlockedBarnSkins`                              | Raw `unlocked_barn_skins`.                            |
+| `unlockedPlots`                                  | Raw `unlocked_plots_ids`.                             |
+| `visitors`                                       | Aggregate visitor stats (raw `commission_data`).      |
+| `currentVisitors`                                | Active visitors (raw `active_commissions`).           |
+| `cropMilestones`                                 | Crop milestone amounts (raw `resources_collected`).   |
+| `composter`                                      | Composter state (raw `composter_data`).               |
+| `cropUpgrades`                                   | Crop upgrade levels (raw `crop_upgrade_levels`).      |
+| `gardenUpgrades`                                 | Garden-wide upgrades (raw `garden_upgrades`).         |
+| `greenhouseSlots`                                | Greenhouse slot coordinates (raw `greenhouse_slots`). |
+| `lastGrowthStageTimestamp` / `lastGrowthStageAt` | Raw `last_growth_stage_time` as number and `Date`.    |
+
+### SkyBlockGardenVisitors
+
+Aggregate garden visitor counters, read from the raw `commission_data` object.
 
 ```ts
-export interface SkyBlockGardenVisitors {
+interface SkyBlockGardenVisitors {
   readonly visited: Record<string, number>;
   readonly completed: Record<string, number>;
   readonly totalCompleted: number;
@@ -166,21 +215,39 @@ export interface SkyBlockGardenVisitors {
 }
 ```
 
-`visited` maps from `visits`, `completed` from `completed`, `totalCompleted` from `total_completed`, and `uniqueNpcsServed` from `unique_npcs_served`. Both record fields keep only numeric values.
+| Field              | Notes                                                                       |
+| ------------------ | --------------------------------------------------------------------------- |
+| `visited`          | Per-visitor visit counts (raw `visits`); non-number values dropped.         |
+| `completed`        | Per-visitor completion counts (raw `completed`); non-number values dropped. |
+| `totalCompleted`   | Raw `total_completed`.                                                      |
+| `uniqueNpcsServed` | Raw `unique_npcs_served`.                                                   |
+
+### SkyBlockGardenActiveVisitor
+
+An entry of `currentVisitors`. The `visitor` field is the key from the raw `active_commissions` object.
 
 ```ts
-export interface SkyBlockGardenActiveVisitor {
+interface SkyBlockGardenActiveVisitor {
   readonly visitor: string;
   readonly requirements: readonly SkyBlockGardenVisitorRequirement[];
+  readonly bonusRewards: readonly SkyBlockGardenVisitorReward[];
   readonly status: string;
   readonly position: number;
 }
 ```
 
-`visitor` is the active commission key. `requirements` is parsed from the raw `requirement` array and is empty when that value is not an array.
+| Field          | Notes                                        |
+| -------------- | -------------------------------------------- |
+| `visitor`      | Visitor npc name (the raw map key).          |
+| `requirements` | Required items (raw `requirement`).          |
+| `bonusRewards` | Bonus rewards granted (raw `bonus_rewards`). |
+| `status`       | Raw `status`.                                |
+| `position`     | Raw `position`.                              |
+
+### SkyBlockGardenVisitorRequirement
 
 ```ts
-export interface SkyBlockGardenVisitorRequirement {
+interface SkyBlockGardenVisitorRequirement {
   readonly originalItem: string;
   readonly originalAmount: number;
   readonly item: string;
@@ -188,18 +255,35 @@ export interface SkyBlockGardenVisitorRequirement {
 }
 ```
 
-Mapped from `original_item`, `original_amount`, `item`, and `amount`.
+| Field            | Notes                  |
+| ---------------- | ---------------------- |
+| `originalItem`   | Raw `original_item`.   |
+| `originalAmount` | Raw `original_amount`. |
+| `item`           | Raw `item`.            |
+| `amount`         | Raw `amount`.          |
+
+### SkyBlockGardenVisitorReward
+
+An entry of `bonusRewards`.
 
 ```ts
-export interface SkyBlockGardenCropMilestones extends SkyBlockGardenCrops {
-  readonly moonFlower: number;
-  readonly sunFlower: number;
-  readonly wildRose: number;
+interface SkyBlockGardenVisitorReward {
+  readonly itemId: string;
+  readonly amount: number;
 }
 ```
 
+| Field    | Notes          |
+| -------- | -------------- |
+| `itemId` | Raw `item_id`. |
+| `amount` | Raw `amount`.  |
+
+### SkyBlockGardenCrops
+
+Per-crop amounts, read from raw vanilla item keys.
+
 ```ts
-export interface SkyBlockGardenCrops {
+interface SkyBlockGardenCrops {
   readonly wheat: number;
   readonly carrot: number;
   readonly sugarCane: number;
@@ -213,8 +297,6 @@ export interface SkyBlockGardenCrops {
 }
 ```
 
-Both `cropMilestones` and `cropUpgrades` use the `SkyBlockGardenCropMilestones` type. The crop fields map from raw item keys:
-
 | Field        | Raw key               |
 | ------------ | --------------------- |
 | `wheat`      | `WHEAT`               |
@@ -227,12 +309,31 @@ Both `cropMilestones` and `cropUpgrades` use the `SkyBlockGardenCropMilestones` 
 | `cocoaBeans` | `INK_SACK:3`          |
 | `mushroom`   | `MUSHROOM_COLLECTION` |
 | `netherWart` | `NETHER_STALK`        |
-| `moonFlower` | `MOONFLOWER`          |
-| `sunFlower`  | `DOUBLE_PLANT`        |
-| `wildRose`   | `WILD_ROSE`           |
+
+### SkyBlockGardenCropMilestones
+
+Extends `SkyBlockGardenCrops` with three flower crops. Used for both `cropMilestones` (raw `resources_collected`) and `cropUpgrades` (raw `crop_upgrade_levels`).
 
 ```ts
-export interface SkyBlockGardenComposter {
+interface SkyBlockGardenCropMilestones extends SkyBlockGardenCrops {
+  readonly moonFlower: number;
+  readonly sunFlower: number;
+  readonly wildRose: number;
+}
+```
+
+| Field        | Raw key        |
+| ------------ | -------------- |
+| `moonFlower` | `MOONFLOWER`   |
+| `sunFlower`  | `DOUBLE_PLANT` |
+| `wildRose`   | `WILD_ROSE`    |
+
+### SkyBlockGardenComposter
+
+Composter state, read from the raw `composter_data` object.
+
+```ts
+interface SkyBlockGardenComposter {
   readonly organicMatter: number;
   readonly fuelUnits: number;
   readonly compostUnits: number;
@@ -244,19 +345,20 @@ export interface SkyBlockGardenComposter {
 }
 ```
 
-| Field               | Raw source              |
-| ------------------- | ----------------------- |
-| `organicMatter`     | `organic_matter`        |
-| `fuelUnits`         | `fuel_units`            |
-| `compostUnits`      | `compost_units`         |
-| `compostItems`      | `compost_items`         |
-| `conversionTicks`   | `conversion_ticks`      |
-| `lastSaveTimestamp` | `last_save`             |
-| `lastSaveAt`        | `last_save` (as `Date`) |
-| `upgrades`          | `upgrades`              |
+| Field                              | Notes                                      |
+| ---------------------------------- | ------------------------------------------ |
+| `organicMatter`                    | Raw `organic_matter`.                      |
+| `fuelUnits`                        | Raw `fuel_units`.                          |
+| `compostUnits`                     | Raw `compost_units`.                       |
+| `compostItems`                     | Raw `compost_items`.                       |
+| `conversionTicks`                  | Raw `conversion_ticks`.                    |
+| `lastSaveTimestamp` / `lastSaveAt` | Raw `last_save` as number and `Date`.      |
+| `upgrades`                         | Composter upgrade levels (raw `upgrades`). |
+
+### SkyBlockGardenComposterUpgrades
 
 ```ts
-export interface SkyBlockGardenComposterUpgrades {
+interface SkyBlockGardenComposterUpgrades {
   readonly speed: number;
   readonly multiDrop: number;
   readonly fuelCap: number;
@@ -265,41 +367,47 @@ export interface SkyBlockGardenComposterUpgrades {
 }
 ```
 
-Mapped from `speed`, `multi_drop`, `fuel_cap`, `organic_matter_cap`, and `cost_reduction`.
+| Field              | Raw key              |
+| ------------------ | -------------------- |
+| `speed`            | `speed`              |
+| `multiDrop`        | `multi_drop`         |
+| `fuelCap`          | `fuel_cap`           |
+| `organicMatterCap` | `organic_matter_cap` |
+| `costReduction`    | `cost_reduction`     |
+
+### SkyBlockGardenUpgrades
+
+Garden-wide upgrades, read from the raw `garden_upgrades` object.
 
 ```ts
-export interface SkyBlockGardenUpgrades {
+interface SkyBlockGardenUpgrades {
   readonly growthSpeed: number;
   readonly yield: number;
   readonly plotLimit: number;
 }
 ```
 
-Mapped from `GROWTH_SPEED`, `YIELD`, and `PLOT_LIMIT`.
+| Field         | Raw key        |
+| ------------- | -------------- |
+| `growthSpeed` | `GROWTH_SPEED` |
+| `yield`       | `YIELD`        |
+| `plotLimit`   | `PLOT_LIMIT`   |
+
+### SkyBlockGardenGreenhouseSlot
 
 ```ts
-export interface SkyBlockGardenGreenhouseSlot {
+interface SkyBlockGardenGreenhouseSlot {
   readonly x: number;
   readonly z: number;
 }
 ```
 
-Each greenhouse slot maps from `x` and `z`.
+### SkyBlockFireSale
 
-**Null/empty behavior:** `unlockedBarnSkins`, `unlockedPlots`, `currentVisitors`, `greenhouseSlots`, and each visitor's `requirements` are empty arrays when the corresponding raw value is missing or not an array. Date fields are `null` when the timestamp is absent.
-
-## parseFireSales
-
-Parses the SkyBlock fire sales (`/skyblock/firesales`) into a typed object.
+An entry returned by `parseFireSales`.
 
 ```ts
-export function parseFireSales(sales: unknown[]): SkyBlockFireSale[];
-```
-
-### Returned types
-
-```ts
-export interface SkyBlockFireSale {
+interface SkyBlockFireSale {
   readonly itemId: string;
   readonly amount: number;
   readonly price: number;
@@ -310,30 +418,20 @@ export interface SkyBlockFireSale {
 }
 ```
 
-| Field            | Raw source          |
-| ---------------- | ------------------- |
-| `itemId`         | `item_id`           |
-| `amount`         | `amount`            |
-| `price`          | `price`             |
-| `startTimestamp` | `start`             |
-| `startAt`        | `start` (as `Date`) |
-| `endTimestamp`   | `end`               |
-| `endAt`          | `end` (as `Date`)   |
+| Field                        | Notes                             |
+| ---------------------------- | --------------------------------- |
+| `itemId`                     | Raw `item_id`.                    |
+| `amount`                     | Raw `amount`.                     |
+| `price`                      | Raw `price`.                      |
+| `startTimestamp` / `startAt` | Raw `start` as number and `Date`. |
+| `endTimestamp` / `endAt`     | Raw `end` as number and `Date`.   |
 
-**Null/empty behavior:** Non-object entries in the input array are skipped. The result is an empty array when no valid entries are present. `startAt` and `endAt` are `null` when their timestamps are absent.
+### SkyBlockNewsItem
 
-## parseSkyBlockNews
-
-Parses the SkyBlock news (`/skyblock/news`) into a typed object.
+An entry returned by `parseSkyBlockNews`.
 
 ```ts
-export function parseSkyBlockNews(items: unknown[]): SkyBlockNewsItem[];
-```
-
-### Returned types
-
-```ts
-export interface SkyBlockNewsItem {
+interface SkyBlockNewsItem {
   readonly title: string;
   readonly link: string;
   readonly text: string;
@@ -341,41 +439,78 @@ export interface SkyBlockNewsItem {
 }
 ```
 
+### SkyBlockNewsDisplayItem
+
 ```ts
-export interface SkyBlockNewsDisplayItem {
+interface SkyBlockNewsDisplayItem {
   readonly material: string;
 }
 ```
 
-`title`, `link`, and `text` map from the same raw keys. `item.material` maps from the nested `item.material`.
+### PlayerBingoEvent
 
-**Null/empty behavior:** Non-object entries in the input array are skipped, yielding an empty array when none are valid.
-
-## parsePlayerBingo
-
-Parses a player's SkyBlock bingo (`/skyblock/bingo`) into a list of bingo events.
+An entry returned by `parsePlayerBingo`.
 
 ```ts
-export function parsePlayerBingo(
-  data: Record<string, unknown>,
-): readonly PlayerBingoEvent[];
-```
-
-### Returned types
-
-```ts
-export interface PlayerBingoEvent {
+interface PlayerBingoEvent {
   readonly key: number;
   readonly points: number;
   readonly completedGoals: readonly string[];
 }
 ```
 
-| Field            | Raw source                              |
-| ---------------- | --------------------------------------- |
-| `key`            | `key`                                   |
-| `points`         | `points`                                |
-| `completedGoals` | `completed_goals` (string entries only) |
+| Field            | Notes                                       |
+| ---------------- | ------------------------------------------- |
+| `key`            | Event key (raw `key`).                      |
+| `points`         | Points earned (raw `points`).               |
+| `completedGoals` | Completed goal ids (raw `completed_goals`). |
 
-**Null/empty behavior:** Events are read from the raw `events` array, defaulting to empty when it is missing or not an array; non-object events are skipped. `completedGoals` is an empty array when `completed_goals` is missing or not an array, and keeps only string entries.
+### SkyBlockBingoResource
+
+The object returned by `parseSkyBlockBingo`.
+
+```ts
+interface SkyBlockBingoResource {
+  readonly lastUpdated: Date | null;
+  readonly id: number;
+  readonly name: string;
+  readonly start: Date | null;
+  readonly end: Date | null;
+  readonly modifier: string;
+  readonly goals: SkyBlockBingoGoal[];
+}
+```
+
+| Field           | Notes                            |
+| --------------- | -------------------------------- |
+| `lastUpdated`   | Resource last-updated timestamp. |
+| `id`            | Event id (raw `id`).             |
+| `name`          | Event name (raw `name`).         |
+| `start` / `end` | Event start / end timestamps.    |
+| `modifier`      | Event modifier (raw `modifier`). |
+| `goals`         | Goal definitions (raw `goals`).  |
+
+### SkyBlockBingoGoal
+
+```ts
+interface SkyBlockBingoGoal {
+  readonly id: string;
+  readonly name: string;
+  readonly lore: string;
+  readonly fullLore: string[];
+  readonly progress: number;
+  readonly tiers: number[];
+  readonly requiredAmount: number | null;
+}
+```
+
+| Field            | Notes                                                |
+| ---------------- | ---------------------------------------------------- |
+| `id`             | Goal id (raw `id`).                                  |
+| `name`           | Goal name (raw `name`).                              |
+| `lore`           | Single-line lore (raw `lore`).                       |
+| `fullLore`       | Multi-line lore (raw `fullLore`).                    |
+| `progress`       | Raw `progress`.                                      |
+| `tiers`          | Tier thresholds (raw `tiers`).                       |
+| `requiredAmount` | Raw `requiredAmount` when numeric, otherwise `null`. |
 

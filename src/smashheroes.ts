@@ -43,6 +43,8 @@ export interface SmashHeroesAbilityStats {
   readonly twoVsTwo: SmashHeroesAbilityModeStats;
   readonly threeVsThree: SmashHeroesAbilityModeStats;
   readonly teams: SmashHeroesAbilityModeStats;
+  readonly threeVsThreeLegacy: SmashHeroesAbilityModeStats;
+  readonly teamsLegacy: SmashHeroesAbilityModeStats;
 }
 
 export interface SmashHeroesHeroModeStats {
@@ -67,6 +69,8 @@ export interface SmashHeroesHeroStats {
   readonly twoVsTwo: SmashHeroesHeroModeStats;
   readonly threeVsThree: SmashHeroesHeroModeStats;
   readonly teams: SmashHeroesHeroModeStats;
+  readonly threeVsThreeLegacy: SmashHeroesHeroModeStats;
+  readonly teamsLegacy: SmashHeroesHeroModeStats;
   readonly friendWins: number;
   readonly friendWinsNormal: number;
   readonly friendLosses: number;
@@ -124,10 +128,14 @@ export interface SmashHeroesStats {
   readonly leaderboardSettings: SmashHeroesLeaderboardSettings;
   readonly heroLevelBoosterActive: SmashHeroesHeroLevelBooster;
   readonly votes: Readonly<Record<string, number>>;
+  readonly combatTracker: boolean;
+  readonly ignoreSmashLevel: boolean;
   readonly normal: SmashHeroesModeStats;
   readonly twoVsTwo: SmashHeroesModeStats;
   readonly threeVsThree: SmashHeroesModeStats;
   readonly teams: SmashHeroesModeStats;
+  readonly threeVsThreeLegacy: SmashHeroesModeStats;
+  readonly teamsLegacy: SmashHeroesModeStats;
   readonly monthly: SmashHeroesPeriodPair;
   readonly weekly: SmashHeroesPeriodPair;
   readonly heroes: Readonly<Record<string, SmashHeroesHeroStats>>;
@@ -142,22 +150,23 @@ const MODE_SUFFIX = {
 
 type SmashHeroesMode = keyof typeof MODE_SUFFIX;
 
-const modeKey = (base: string, suffix: string): string =>
-  suffix === "" ? base : `${base}_${suffix}`;
+const modeKey = (base: string, suffix: string, sep = "_"): string =>
+  suffix === "" ? base : `${base}${sep}${suffix}`;
 
 function parseMode(
   smashHeroes: Record<string, unknown>,
   suffix: string,
+  sep = "_",
 ): SmashHeroesModeStats {
   return {
-    games: num(smashHeroes, modeKey("games", suffix)),
-    wins: num(smashHeroes, modeKey("wins", suffix)),
-    losses: num(smashHeroes, modeKey("losses", suffix)),
-    kills: num(smashHeroes, modeKey("kills", suffix)),
-    deaths: num(smashHeroes, modeKey("deaths", suffix)),
-    smashed: num(smashHeroes, modeKey("smashed", suffix)),
-    smasher: num(smashHeroes, modeKey("smasher", suffix)),
-    damageDealt: num(smashHeroes, modeKey("damage_dealt", suffix)),
+    games: num(smashHeroes, modeKey("games", suffix, sep)),
+    wins: num(smashHeroes, modeKey("wins", suffix, sep)),
+    losses: num(smashHeroes, modeKey("losses", suffix, sep)),
+    kills: num(smashHeroes, modeKey("kills", suffix, sep)),
+    deaths: num(smashHeroes, modeKey("deaths", suffix, sep)),
+    smashed: num(smashHeroes, modeKey("smashed", suffix, sep)),
+    smasher: num(smashHeroes, modeKey("smasher", suffix, sep)),
+    damageDealt: num(smashHeroes, modeKey("damage_dealt", suffix, sep)),
   };
 }
 
@@ -176,12 +185,13 @@ function parsePeriod(
 function parseAbilityMode(
   ability: Record<string, unknown>,
   suffix: string,
+  sep = "_",
 ): SmashHeroesAbilityModeStats {
   return {
-    kills: num(ability, modeKey("kills", suffix)),
-    smashed: num(ability, modeKey("smashed", suffix)),
-    smasher: num(ability, modeKey("smasher", suffix)),
-    damageDealt: num(ability, modeKey("damage_dealt", suffix)),
+    kills: num(ability, modeKey("kills", suffix, sep)),
+    smashed: num(ability, modeKey("smashed", suffix, sep)),
+    smasher: num(ability, modeKey("smasher", suffix, sep)),
+    damageDealt: num(ability, modeKey("damage_dealt", suffix, sep)),
   };
 }
 
@@ -194,23 +204,26 @@ function parseAbility(
     twoVsTwo: parseAbilityMode(ability, "2v2"),
     threeVsThree: parseAbilityMode(ability, "3v3"),
     teams: parseAbilityMode(ability, "teams"),
+    threeVsThreeLegacy: parseAbilityMode(ability, "3v3", ""),
+    teamsLegacy: parseAbilityMode(ability, "teams", ""),
   };
 }
 
 function parseHeroMode(
   classStats: Record<string, unknown>,
   suffix: string,
+  sep = "_",
 ): SmashHeroesHeroModeStats {
   return {
-    games: num(classStats, modeKey("games", suffix)),
-    wins: num(classStats, modeKey("wins", suffix)),
-    losses: num(classStats, modeKey("losses", suffix)),
-    kills: num(classStats, modeKey("kills", suffix)),
-    deaths: num(classStats, modeKey("deaths", suffix)),
-    smashed: num(classStats, modeKey("smashed", suffix)),
-    smasher: num(classStats, modeKey("smasher", suffix)),
-    damageDealt: num(classStats, modeKey("damage_dealt", suffix)),
-    winStreak: num(classStats, modeKey("win_streak", suffix)),
+    games: num(classStats, modeKey("games", suffix, sep)),
+    wins: num(classStats, modeKey("wins", suffix, sep)),
+    losses: num(classStats, modeKey("losses", suffix, sep)),
+    kills: num(classStats, modeKey("kills", suffix, sep)),
+    deaths: num(classStats, modeKey("deaths", suffix, sep)),
+    smashed: num(classStats, modeKey("smashed", suffix, sep)),
+    smasher: num(classStats, modeKey("smasher", suffix, sep)),
+    damageDealt: num(classStats, modeKey("damage_dealt", suffix, sep)),
+    winStreak: num(classStats, modeKey("win_streak", suffix, sep)),
   };
 }
 
@@ -235,6 +248,8 @@ function parseHero(
     twoVsTwo: parseHeroMode(classStats, "2v2"),
     threeVsThree: parseHeroMode(classStats, "3v3"),
     teams: parseHeroMode(classStats, "teams"),
+    threeVsThreeLegacy: parseHeroMode(classStats, "3v3", ""),
+    teamsLegacy: parseHeroMode(classStats, "teams", ""),
     friendWins: num(classStats, "friend_wins"),
     friendWinsNormal: num(classStats, "friend_wins_normal"),
     friendLosses: num(classStats, "friend_losses"),
@@ -320,7 +335,11 @@ function collectHeroNames(
 export function parseSmashHeroes(
   stats: Record<string, unknown>,
 ): SmashHeroesStats | null {
-  if (typeof stats !== "object" || stats === null) {
+  if (
+    typeof stats !== "object" ||
+    stats === null ||
+    Object.keys(stats).length === 0
+  ) {
     return null;
   }
 
@@ -376,7 +395,11 @@ export function parseSmashHeroes(
     leaderboardSettings: parseLeaderboardSettings(stats),
     heroLevelBoosterActive: parseHeroLevelBooster(stats),
     votes: parseVotes(stats),
+    combatTracker: bool(stats, "combatTracker"),
+    ignoreSmashLevel: bool(stats, "ignoreSmashLevel"),
     ...modes,
+    threeVsThreeLegacy: parseMode(stats, "3v3", ""),
+    teamsLegacy: parseMode(stats, "teams", ""),
     monthly: {
       a: parsePeriod(stats, "monthly_a"),
       b: parsePeriod(stats, "monthly_b"),
