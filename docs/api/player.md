@@ -23,7 +23,7 @@ export function parsePlayer(raw: Record<string, unknown>): HypixelPlayer;
 - `uuid` and `nickname` fall back to `"UNKNOWN"`, `language` falls back to `"ENGLISH"`, and `channel` falls back to `"ALL"` when absent.
 - Each per-game block in `stats` is a parser result that may be `null` when that game's block is absent (see [HypixelPlayerStats](#hypixelplayerstats)).
 
-Dynamic maps (for example `claimedSoloBank`, `xmas2019`, `cooldowns`, `mapVotes`, and the seasonal `bingo` maps) contain only the keys present in the raw data, so they may be empty objects when no data exists.
+Dynamic maps (for example `claimedSoloBank`, `claimedCoopBankAt`, `christmasPresents`, `cooldowns`, `commandCooldowns`, `mapVotes`, `anniversaryBingoCard`, and the seasonal `bingo` maps) contain only the keys present in the raw data, so they may be empty objects when no data exists.
 
 ---
 
@@ -48,6 +48,7 @@ export interface HypixelPlayer {
   readonly networkExp: number;
   readonly karma: number;
   readonly language: string;
+  readonly legacyLanguage: string;
   readonly channel: string;
   readonly networkUpdateBook: string;
   readonly mostRecentMinecraftVersion: number;
@@ -87,17 +88,23 @@ export interface HypixelPlayer {
   readonly claimedPotatoBasketAt: Date | null;
   readonly claimedPotatoTalismanAt: Date | null;
   readonly claimedSoloBank: Record<string, number>;
+  readonly claimedCoopBankAt: Record<string, Date | null>;
   readonly skyBlockFreeCookieAt: Date | null;
   readonly lastMapVoteAt: Date | null;
+  readonly watchdogBlockedAt: Date | null;
   readonly flashingSale: HypixelPlayerFlashingSale;
+  readonly flashingNews: HypixelPlayerFlashingNews;
+  readonly skin: HypixelPlayerSkin;
   readonly challenges: Record<string, Record<string, number>>;
   readonly compassStats: Record<string, Record<string, number>>;
   readonly voting: Record<string, number>;
   readonly leveling: HypixelPlayerLeveling;
   readonly dailyTwoKExpAt: Date | null;
+  readonly weeklyBoosterAt: Date | null;
   readonly anniversary: HypixelPlayerAnniversary;
   readonly cooldowns: HypixelPlayerCooldowns;
-  readonly xmas2019: Record<string, boolean>;
+  readonly commandCooldowns: Record<string, Record<string, Date | null>>;
+  readonly christmasPresents: Record<string, boolean>;
   readonly achievements: HypixelPlayerAchievements;
   readonly cosmetics: HypixelPlayerCosmetics;
   readonly rankPurchase: HypixelPlayerRankPurchase;
@@ -113,31 +120,95 @@ export interface HypixelPlayer {
   readonly tourney: HypixelPlayerTourney;
   readonly fireworkStorage: readonly HypixelPlayerFirework[];
   readonly friendRequests: readonly string[];
+  readonly friendRequestsBlocked: readonly string[];
+  readonly spectatorSettings: HypixelPlayerSpectatorSettings;
+  readonly kits: HypixelPlayerKits;
+  readonly currentHat: string;
+  readonly currentIp: string;
+  readonly todo: string;
+  readonly guildNotifications: boolean;
+  readonly autoDetectLanguage: boolean;
+  readonly adventureTester: boolean;
+  readonly disableSendAll: boolean;
+  readonly sendCerberusMessages: boolean;
+  readonly friendInvisible: boolean;
+  readonly giveDjFeather: boolean;
+  readonly hasTheHotPotato: boolean;
+  readonly notifiedOfStuff: boolean;
+  readonly reverted: boolean;
+  readonly showTntRunActionbarInfo: boolean;
+  readonly enableFireFlurry: boolean;
+  readonly santaFinished: boolean;
+  readonly snowballFightIntro2019: boolean;
+  readonly storeCredit: number;
+  readonly multiTunnel: readonly string[];
+  readonly plotResets: HypixelPlayerPlotResets;
+  readonly pp: string;
+  readonly collectiblesMenuVisibilitySort: string;
+  readonly oneTimeAchievementMenuSortCompletionSort: string;
+  readonly anniversaryBingoCard: Record<string, readonly string[]>;
+  readonly anniversaryNpcVisited: Record<string, readonly number[]>;
+  readonly anniversaryNpcProgress: Record<string, unknown>;
+  readonly upcomingLanguageReleases: Record<string, { logins: number }>;
+  readonly aprilFoolsClicked: Record<string, readonly string[]>;
+  readonly tournamentRewards: Record<string, string>;
+  readonly redisBackups: Record<string, unknown>;
+  readonly blitzKitLevels: Record<string, number>;
+  readonly legacyRootStats: Record<string, number>;
   readonly stats: HypixelPlayerStats;
 }
 ```
 
-| Field                                                 | Notes                                                                                    |
-| ----------------------------------------------------- | ---------------------------------------------------------------------------------------- |
-| `id`                                                  | Internal Hypixel document id (raw `_id`).                                                |
-| `uuid`                                                | Player UUID, `"UNKNOWN"` when absent.                                                    |
-| `nickname`                                            | Display name (raw `displayname`), `"UNKNOWN"` when absent.                               |
-| `playerName`                                          | Raw `playername` value.                                                                  |
-| `staffRank`                                           | Raw `rank` (staff rank) value.                                                           |
-| `packageRank` / `newPackageRank`                      | Purchased rank fields.                                                                   |
-| `monthlyPackageRank` / `mostRecentMonthlyPackageRank` | Monthly (MVP++) rank fields.                                                             |
-| `networkExp`                                          | Network experience (raw, not a derived level).                                           |
-| `language`                                            | User language (raw `userLanguage`), `"ENGLISH"` when absent.                             |
-| `channel`                                             | Chat channel, `"ALL"` when absent.                                                       |
-| `giftsGrinch`                                         | Raw `gifts_grinch`.                                                                      |
-| `mapVotes`                                            | Nested number map from raw `map_votes`.                                                  |
-| `questAutoActivate`                                   | Raw `questSettings.autoActivate`.                                                        |
-| `chatEnabled`                                         | Raw `chat`.                                                                              |
-| `claimedSoloBank`                                     | Map keyed by the suffix after `claimed_solo_bank_`.                                      |
-| `dailyTwoKExpAt`                                      | Raw `eugene.dailyTwoKExp` timestamp.                                                     |
-| `xmas2019`                                            | Map keyed by the suffix after `xmas2019_`.                                               |
-| `challenges` / `compassStats`                         | Nested number maps from the raw fields of the same name.                                 |
-| `stats`                                               | Per-game and SkyBlock statistics blocks (see [HypixelPlayerStats](#hypixelplayerstats)). |
+| Field                                                 | Notes                                                                                                                                                                                                       |
+| ----------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `id`                                                  | Internal Hypixel document id (raw `_id`).                                                                                                                                                                   |
+| `uuid`                                                | Player UUID, `"UNKNOWN"` when absent.                                                                                                                                                                       |
+| `nickname`                                            | Display name (raw `displayname`), `"UNKNOWN"` when absent.                                                                                                                                                  |
+| `playerName`                                          | Raw `playername` value.                                                                                                                                                                                     |
+| `staffRank`                                           | Raw `rank` (staff rank) value.                                                                                                                                                                              |
+| `packageRank` / `newPackageRank`                      | Purchased rank fields.                                                                                                                                                                                      |
+| `monthlyPackageRank` / `mostRecentMonthlyPackageRank` | Monthly (MVP++) rank fields.                                                                                                                                                                                |
+| `networkExp`                                          | Network experience (raw, not a derived level).                                                                                                                                                              |
+| `language`                                            | User language (raw `userLanguage`), `"ENGLISH"` when absent.                                                                                                                                                |
+| `legacyLanguage`                                      | Legacy language field (raw `language`).                                                                                                                                                                     |
+| `channel`                                             | Chat channel, `"ALL"` when absent.                                                                                                                                                                          |
+| `giftsGrinch`                                         | Raw `gifts_grinch`.                                                                                                                                                                                         |
+| `santaQuestStarted`                                   | Raw `SANTA_QUEST_STARTED`.                                                                                                                                                                                  |
+| `mapVotes`                                            | Nested number map from raw `map_votes`.                                                                                                                                                                     |
+| `questAutoActivate`                                   | Raw `questSettings.autoActivate`, falling back to `quest.autoActivate`.                                                                                                                                     |
+| `chatEnabled`                                         | Raw `chat`.                                                                                                                                                                                                 |
+| `claimedSoloBank`                                     | Map keyed by the suffix after `claimed_solo_bank_`.                                                                                                                                                         |
+| `claimedCoopBankAt`                                   | Timestamp map keyed by the suffix after `claimed_coop_bank_`.                                                                                                                                               |
+| `skyBlockFreeCookieAt`                                | Raw `skyblock_free_cookie` timestamp.                                                                                                                                                                       |
+| `watchdogBlockedAt`                                   | Raw `watchdogBlockTimestamp`.                                                                                                                                                                               |
+| `dailyTwoKExpAt`                                      | Raw `eugene.dailyTwoKExp` timestamp.                                                                                                                                                                        |
+| `weeklyBoosterAt`                                     | Raw `eugene.weekly_booster` timestamp.                                                                                                                                                                      |
+| `commandCooldowns`                                    | Timestamp map from the raw `cooldowns` object, one inner map per group.                                                                                                                                     |
+| `christmasPresents`                                   | Boolean map of raw keys matching `xmas<year>_...`, keyed with the `xmas` prefix removed (for example `2019_...`). Replaces the old per-year `xmas2019` field.                                               |
+| `challenges` / `compassStats`                         | Nested number maps from the raw fields of the same name.                                                                                                                                                    |
+| `friendRequests`                                      | Raw `friendRequests` string list.                                                                                                                                                                           |
+| `friendRequestsBlocked`                               | Raw `friendBlocksUuid` string list.                                                                                                                                                                         |
+| `currentHat` / `currentIp`                            | Raw fields of the same name.                                                                                                                                                                                |
+| `todo`                                                | Raw `TODO`.                                                                                                                                                                                                 |
+| `giveDjFeather`                                       | Raw `give_dj_feather`.                                                                                                                                                                                      |
+| `showTntRunActionbarInfo`                             | Raw `show_tntrun_actionbar_info`.                                                                                                                                                                           |
+| `enableFireFlurry`                                    | Raw `enable_fire_flurry`.                                                                                                                                                                                   |
+| `santaFinished`                                       | Raw `SANTA_FINISHED`.                                                                                                                                                                                       |
+| `snowballFightIntro2019`                              | Raw `snowball_fight_intro_2019`.                                                                                                                                                                            |
+| `multiTunnel`                                         | Raw `multiTunnel` string list.                                                                                                                                                                              |
+| `pp`                                                  | Raw `pp`.                                                                                                                                                                                                   |
+| `collectiblesMenuVisibilitySort`                      | Raw `collectibles_menu_visibility_sort`.                                                                                                                                                                    |
+| `oneTimeAchievementMenuSortCompletionSort`            | Raw `onetime_achievement_menu_sort_completion_sort`.                                                                                                                                                        |
+| `anniversaryBingoCard`                                | String-list map of the known bingo cell keys (`Rowone` through `Rowfive`, `Columnone` through `Columnfive`, `Diagonalone`, `Diagonaltwo`, `blackOut`); only cells present as arrays in the raw data appear. |
+| `anniversaryNpcVisited`                               | Number-list map keyed by the four-digit year from raw `anniversaryNPCVisited<year>` keys.                                                                                                                   |
+| `anniversaryNpcProgress`                              | Map keyed by the four-digit year from raw `anniversaryNPCProgress<year>` keys; raw values are passed through unchanged.                                                                                     |
+| `upcomingLanguageReleases`                            | Map keyed by the suffix after `upcomingLanguageRelease_`; each entry holds its `logins` count.                                                                                                              |
+| `aprilFoolsClicked`                                   | String-list map of raw keys starting with `aprilFoolsPlayerClicked_` or `aprilFoolsStaffClicked_`, keyed by the full raw key.                                                                               |
+| `tournamentRewards`                                   | String map keyed by the suffix after `tournamentReward_`.                                                                                                                                                   |
+| `redisBackups`                                        | Map of raw keys matching `redisBackup` plus an optional number suffix; raw values are passed through unchanged.                                                                                             |
+| `blitzKitLevels`                                      | Number map of root-level raw keys matching `insane_<kit>` or `normal_<kit>`.                                                                                                                                |
+| `legacyRootStats`                                     | Number map of the fixed legacy root keys `coins`, `deaths`, `forcefieldTime`, `kills`, `killstreaks`, `monthly_kills_b`, `shots_fired`, `weekly_kills_a`, and `wins`; only keys present as numbers appear.  |
+| `stats`                                               | Per-game and SkyBlock statistics blocks (see [HypixelPlayerStats](#hypixelplayerstats)).                                                                                                                    |
 
 ### HypixelPlayerStats
 
@@ -261,6 +332,78 @@ export interface HypixelPlayerFlashingSale {
 }
 ```
 
+Note: read from raw `flashingSaleClicks`, `flashingSaleOpens`, `flashingSalePoppedUp`, and `flashingSalePopup`.
+
+### HypixelPlayerFlashingNews
+
+Flashing-news popup interaction counters.
+
+```ts
+export interface HypixelPlayerFlashingNews {
+  readonly opens: number;
+  readonly poppedUp: number;
+  readonly popup: readonly string[];
+}
+```
+
+Note: read from raw `flashingNewsOpens`, `flashingNewsPoppedUp`, and `flashingNewsPopup`.
+
+### HypixelPlayerSkin
+
+Skin state block (read from the raw `skin` object).
+
+```ts
+export interface HypixelPlayerSkin {
+  readonly timeoutStartAt: Date | null;
+  readonly value: string;
+}
+```
+
+Note: `timeoutStartAt` maps from raw `skin.timeoutStart`; `value` from raw `skin.value`.
+
+### HypixelPlayerPlotResets
+
+Housing plot reset record (read from the raw `plotResets` object).
+
+```ts
+export interface HypixelPlayerPlotResets {
+  readonly at: Date | null;
+  readonly uuid: string;
+}
+```
+
+Note: `at` maps from raw `plotResets.time`.
+
+### HypixelPlayerSpectatorSettings
+
+Spectator mode preferences.
+
+```ts
+export interface HypixelPlayerSpectatorSettings {
+  readonly invisible: boolean;
+  readonly firstPerson: boolean;
+  readonly alwaysFlying: boolean;
+  readonly autoTeleport: boolean;
+}
+```
+
+Note: read from raw `spectators_invisible`, `spec_first_person`, `spec_always_flying`, and `spec_auto_teleport`.
+
+### HypixelPlayerKits
+
+Kit shop preferences (read from the raw `kits` object).
+
+```ts
+export interface HypixelPlayerKits {
+  readonly kitShopSorting: {
+    readonly ownedFirst: boolean;
+    readonly currentSort: string;
+  };
+}
+```
+
+Note: read from raw `kits.kitShopSorting.ownedFirst` and `kits.kitShopSorting.currentSort`.
+
 ### HypixelPlayerLeveling
 
 Network leveling reward claim state.
@@ -282,6 +425,8 @@ export interface HypixelPlayerAnniversary {
 }
 ```
 
+Note: read from raw `anniversaryNPCProgress2020` and `anniversaryNPCVisited2020`. Other years are exposed through the root `anniversaryNpcProgress` and `anniversaryNpcVisited` maps.
+
 ### HypixelPlayerCooldowns
 
 Open-ended map of per-event cooldown families. The outer key is a raw cooldown family name with its trailing `Cooldowns` or `Cooldowns2` suffix stripped; the inner value is a `Record<string, boolean>` keyed by the raw cooldown identifiers. Only families present in the raw data appear.
@@ -296,6 +441,7 @@ Timestamps of when each rank was purchased / leveled up to.
 
 ```ts
 export interface HypixelPlayerRankPurchase {
+  readonly noneAt: Date | null;
   readonly vipAt: Date | null;
   readonly vipPlusAt: Date | null;
   readonly mvpAt: Date | null;
@@ -303,7 +449,7 @@ export interface HypixelPlayerRankPurchase {
 }
 ```
 
-Note: these map from raw `levelUp_VIP`, `levelUp_VIP_PLUS`, `levelUp_MVP`, and `levelUp_MVP_PLUS`.
+Note: these map from raw `levelUp_NONE`, `levelUp_VIP`, `levelUp_VIP_PLUS`, `levelUp_MVP`, and `levelUp_MVP_PLUS`.
 
 ---
 
@@ -318,26 +464,30 @@ export interface HypixelPlayerAchievements {
   readonly points: number;
   readonly rewards: Record<string, number>;
   readonly tracking: readonly string[];
+  readonly trackingHideMessages: boolean;
   readonly tiered: Record<string, number>;
   readonly oneTime: readonly string[];
   readonly oneTimeMenuSort: string;
+  readonly oneTimeMenuSortCompletedFirst: boolean;
   readonly tieredMenuSort: string;
   readonly sync: Record<string, number>;
   readonly totem: HypixelPlayerAchievementsTotem;
 }
 ```
 
-| Field             | Notes                                                                                |
-| ----------------- | ------------------------------------------------------------------------------------ |
-| `points`          | From `achievements._legacy_achievement_points`, falling back to `achievementPoints`. |
-| `rewards`         | Reward map keyed by the suffix after `for_points_`.                                  |
-| `tracking`        | List of currently tracked achievements (raw `achievementTracking`).                  |
-| `tiered`          | Tiered achievement progress map (raw `achievements`).                                |
-| `oneTime`         | List of unlocked one-time achievements (raw `achievementsOneTime`).                  |
-| `oneTimeMenuSort` | Raw `onetime_achievement_menu_sort`.                                                 |
-| `tieredMenuSort`  | Raw `tiered_achievement_menu_sort`.                                                  |
-| `sync`            | Achievement sync map (raw `achievementSync`).                                        |
-| `totem`           | Totem customization state.                                                           |
+| Field                           | Notes                                                                                |
+| ------------------------------- | ------------------------------------------------------------------------------------ |
+| `points`                        | From `achievements._legacy_achievement_points`, falling back to `achievementPoints`. |
+| `rewards`                       | Reward map keyed by the suffix after `for_points_`.                                  |
+| `tracking`                      | List of currently tracked achievements (raw `achievementTracking`).                  |
+| `trackingHideMessages`          | Raw `achievementTrackingHideMessages`.                                               |
+| `tiered`                        | Tiered achievement progress map (raw `achievements`).                                |
+| `oneTime`                       | List of unlocked one-time achievements (raw `achievementsOneTime`).                  |
+| `oneTimeMenuSort`               | Raw `onetime_achievement_menu_sort`.                                                 |
+| `oneTimeMenuSortCompletedFirst` | Raw `onetime_achievement_menu_sort_completed_first`.                                 |
+| `tieredMenuSort`                | Raw `tiered_achievement_menu_sort`.                                                  |
+| `sync`                          | Achievement sync map (raw `achievementSync`).                                        |
+| `totem`                         | Totem customization state.                                                           |
 
 ### HypixelPlayerAchievementsTotem
 
@@ -374,6 +524,7 @@ export interface HypixelPlayerCosmetics {
   readonly selectedParticlePack: string;
   readonly clickEffect: string;
   readonly cloak: string;
+  readonly customCloakBase64: string;
   readonly emote: string;
   readonly disguise: string;
   readonly transformation: string;
@@ -381,6 +532,8 @@ export interface HypixelPlayerCosmetics {
   readonly outfit: Record<string, string>;
   readonly boxesConvertedToday: number;
   readonly firstBoxConvertedAt: Date | null;
+  readonly boxesCraftedToday: number;
+  readonly firstBoxCraftedAt: Date | null;
   readonly packages: readonly string[];
   readonly pets: HypixelPlayerPets;
 }
@@ -393,9 +546,12 @@ export interface HypixelPlayerCosmetics {
 | `selectedParticlePack` | Raw `particlePack`.                      |
 | `clickEffect`          | Raw `currentClickEffect`.                |
 | `cloak`                | Raw `currentCloak`.                      |
+| `customCloakBase64`    | Raw `customCloakBase64`.                 |
 | `emote`                | Raw `currentEmote`.                      |
 | `boxesConvertedToday`  | Raw `vanityConvertedBoxToday`.           |
 | `firstBoxConvertedAt`  | Raw `vanityFirstConvertedBox` timestamp. |
+| `boxesCraftedToday`    | Raw `vanityCraftedBoxToday`.             |
+| `firstBoxCraftedAt`    | Raw `vanityFirstCraftedBox` timestamp.   |
 | `packages`             | Raw `vanityMeta.packages`.               |
 
 ### HypixelPlayerPets
@@ -407,13 +563,15 @@ export interface HypixelPlayerPets {
   readonly currentPet: string;
   readonly favorites: string;
   readonly autoSpawn: boolean;
+  readonly active: boolean;
   readonly lastJourneyAt: Date | null;
+  readonly lastUpdatedAt: Date | null;
   readonly consumables: HypixelPlayerPetConsumables;
   readonly owned: readonly HypixelPlayerPet[];
 }
 ```
 
-Note: `favorites` maps from raw `vanityFavorites`; `autoSpawn` from raw `auto_spawn_pet`; `lastJourneyAt` from raw `petJourneyTimestamp`. `owned` is built from each `vanityMeta.packages` entry starting with `pet_`.
+Note: `favorites` maps from raw `vanityFavorites`; `autoSpawn` from raw `auto_spawn_pet`; `active` from raw `petActive`; `lastJourneyAt` from raw `petJourneyTimestamp`; `lastUpdatedAt` from raw `petUpdate`. `owned` is built from the union of each `vanityMeta.packages` entry starting with `pet_` and each key under raw `petStats` (lowercased), so pets that only appear in `petStats` are included too.
 
 ### HypixelPlayerPet
 
@@ -433,16 +591,16 @@ export interface HypixelPlayerPet {
 }
 ```
 
-| Field             | Notes                                          |
-| ----------------- | ---------------------------------------------- |
-| `name`            | Pet package id with the `pet_` prefix removed. |
-| `nickname`        | Raw `petStats.<NAME>.name`.                    |
-| `hunger`          | Raw `petStats.<NAME>.HUNGER.value`.            |
-| `lastFedAt`       | Raw `petStats.<NAME>.HUNGER.timestamp`.        |
-| `thirst`          | Raw `petStats.<NAME>.THIRST.value`.            |
-| `lastDrankAt`     | Raw `petStats.<NAME>.THIRST.timestamp`.        |
-| `exercise`        | Raw `petStats.<NAME>.EXERCISE.value`.          |
-| `lastExercisedAt` | Raw `petStats.<NAME>.EXERCISE.timestamp`.      |
+| Field             | Notes                                                                            |
+| ----------------- | -------------------------------------------------------------------------------- |
+| `name`            | Pet package id with the `pet_` prefix removed, or the `petStats` key lowercased. |
+| `nickname`        | Raw `petStats.<NAME>.name`.                                                      |
+| `hunger`          | Raw `petStats.<NAME>.HUNGER.value`.                                              |
+| `lastFedAt`       | Raw `petStats.<NAME>.HUNGER.timestamp`.                                          |
+| `thirst`          | Raw `petStats.<NAME>.THIRST.value`.                                              |
+| `lastDrankAt`     | Raw `petStats.<NAME>.THIRST.timestamp`.                                          |
+| `exercise`        | Raw `petStats.<NAME>.EXERCISE.value`.                                            |
+| `lastExercisedAt` | Raw `petStats.<NAME>.EXERCISE.timestamp`.                                        |
 
 ### HypixelPlayerPetConsumables
 
@@ -613,14 +771,18 @@ One entry is produced per raw key starting with `given_cookies_`; `date` is the 
 
 ### HypixelPlayerQuest
 
-A quest with its completion history.
+A quest with its active-run state and completion history.
 
 ```ts
 export interface HypixelPlayerQuest {
   readonly name: string;
+  readonly startedAt: Date | null;
+  readonly objectives: Record<string, number>;
   readonly completions: readonly HypixelPlayerQuestCompletion[];
 }
 ```
+
+Note: `startedAt` maps from the raw `active.started` timestamp; `objectives` is a number map from raw `active.objectives`.
 
 ### HypixelPlayerQuestCompletion
 
@@ -647,12 +809,12 @@ export interface HypixelPlayerParkour {
 }
 ```
 
-| Field         | Notes                                                                 |
-| ------------- | --------------------------------------------------------------------- |
-| `location`    | Parkour location key (raw key under `parkourCompletions`).            |
-| `timeStart`   | Start time of the first recorded run.                                 |
-| `timeTook`    | Duration of the first recorded run.                                   |
-| `checkpoints` | Best checkpoint times from `parkourCheckpointBests` for the location. |
+| Field         | Notes                                                                                                                                                                                             |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `location`    | Parkour location key. Locations are the union of the keys under raw `parkourCompletions` and `parkourCheckpointBests`, so a location with only checkpoint bests (no completed run) still appears. |
+| `timeStart`   | Start time of the first recorded run (`0` when the location has no completions).                                                                                                                  |
+| `timeTook`    | Duration of the first recorded run (`0` when the location has no completions).                                                                                                                    |
+| `checkpoints` | Best checkpoint times from `parkourCheckpointBests` for the location.                                                                                                                             |
 
 ---
 

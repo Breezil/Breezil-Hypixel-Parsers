@@ -160,31 +160,31 @@ interface SkyBlockAuction {
 }
 ```
 
-| Field                     | Notes                                                                   |
-| ------------------------- | ----------------------------------------------------------------------- |
-| `id`                      | Database id (raw `_id`).                                                |
-| `uuid`                    | Auction id (raw `uuid`, falling back to `auction_id`).                  |
-| `auctioneer`              | Seller id (raw `auctioneer`, falling back to `seller`).                 |
-| `profileId`               | Seller profile id (raw `profile_id`, falling back to `seller_profile`). |
-| `buyer` / `buyerProfile`  | Buyer id and buyer profile id (raw `buyer` / `buyer_profile`).          |
-| `coop`                    | Co-op member ids (raw `coop`).                                          |
-| `itemName` / `itemLore`   | Display name and lore text (raw `item_name` / `item_lore`).             |
-| `itemUuid`                | Item uuid (raw `item_uuid`).                                            |
-| `extra`                   | Extra search/index string (raw `extra`).                                |
-| `tier`                    | Item tier (raw `tier`).                                                 |
-| `categories` / `category` | Item categories list and primary category.                              |
-| `startedAt` / `endsAt`    | Auction start / end timestamps (raw `start` / `end`).                   |
-| `lastUpdatedAt`           | Last-update timestamp (raw `last_updated`).                             |
-| `soldAt`                  | Sale timestamp (raw `timestamp`).                                       |
-| `startingBid`             | Starting bid amount.                                                    |
-| `highestBidAmount`        | Highest bid amount.                                                     |
-| `price`                   | Price field (raw `price`).                                              |
-| `bin`                     | Whether this is a buy-it-now listing.                                   |
-| `claimed`                 | Whether the auction has been claimed.                                   |
-| `claimedBidders`          | Ids of bidders who have claimed (raw `claimed_bidders`).                |
-| `itemBytes`               | Raw base64/gzip-encoded item bytes (raw `item_bytes`).                  |
-| `item`                    | NBT items decoded from `itemBytes`.                                     |
-| `bids`                    | Bid history (raw `bids`).                                               |
+| Field                     | Notes                                                                                                                                                                                                                                                                                                                                                      |
+| ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `id`                      | Database id (raw `_id`).                                                                                                                                                                                                                                                                                                                                   |
+| `uuid`                    | Auction id (raw `uuid`, falling back to `auction_id`).                                                                                                                                                                                                                                                                                                     |
+| `auctioneer`              | Seller id (raw `auctioneer`, falling back to `seller`).                                                                                                                                                                                                                                                                                                    |
+| `profileId`               | Seller profile id (raw `profile_id`, falling back to `seller_profile`).                                                                                                                                                                                                                                                                                    |
+| `buyer` / `buyerProfile`  | Buyer id and buyer profile id (raw `buyer` / `buyer_profile`).                                                                                                                                                                                                                                                                                             |
+| `coop`                    | Co-op member ids (raw `coop`).                                                                                                                                                                                                                                                                                                                             |
+| `itemName` / `itemLore`   | Display name and lore text (raw `item_name` / `item_lore`).                                                                                                                                                                                                                                                                                                |
+| `itemUuid`                | Item uuid (raw `item_uuid`).                                                                                                                                                                                                                                                                                                                               |
+| `extra`                   | Extra search/index string (raw `extra`).                                                                                                                                                                                                                                                                                                                   |
+| `tier`                    | Item tier (raw `tier`).                                                                                                                                                                                                                                                                                                                                    |
+| `categories` / `category` | Item categories list and primary category.                                                                                                                                                                                                                                                                                                                 |
+| `startedAt` / `endsAt`    | Auction start / end timestamps (raw `start` / `end`).                                                                                                                                                                                                                                                                                                      |
+| `lastUpdatedAt`           | Last-update timestamp (raw `last_updated`).                                                                                                                                                                                                                                                                                                                |
+| `soldAt`                  | Sale timestamp (raw `timestamp`).                                                                                                                                                                                                                                                                                                                          |
+| `startingBid`             | Starting bid amount.                                                                                                                                                                                                                                                                                                                                       |
+| `highestBidAmount`        | Highest bid amount.                                                                                                                                                                                                                                                                                                                                        |
+| `price`                   | Price field (raw `price`).                                                                                                                                                                                                                                                                                                                                 |
+| `bin`                     | Whether this is a buy-it-now listing.                                                                                                                                                                                                                                                                                                                      |
+| `claimed`                 | Whether the auction has been claimed.                                                                                                                                                                                                                                                                                                                      |
+| `claimedBidders`          | Ids of bidders who have claimed (raw `claimed_bidders`).                                                                                                                                                                                                                                                                                                   |
+| `itemBytes`               | Raw base64/gzip-encoded item bytes (raw `item_bytes`). On the paged `/skyblock/auctions` endpoint the raw value is a base64 string; on the single `/skyblock/auction` endpoint it arrives as an object of the shape `{ type, data }` where `data` holds the base64 string. `parseAuction` accepts both forms, and `itemBytes` is always the base64 string. |
+| `item`                    | NBT items decoded from `itemBytes`.                                                                                                                                                                                                                                                                                                                        |
+| `bids`                    | Bid history (raw `bids`).                                                                                                                                                                                                                                                                                                                                  |
 
 ### SkyBlockAuctionBid
 
@@ -295,4 +295,3 @@ interface NbtExtraAttributes {
 ```ts
 type NbtCompound = Readonly<Record<string, unknown>>;
 ```
-

@@ -75,9 +75,11 @@ export interface HypixelPlayerAchievements {
   readonly points: number;
   readonly rewards: Record<string, number>;
   readonly tracking: readonly string[];
+  readonly trackingHideMessages: boolean;
   readonly tiered: Record<string, number>;
   readonly oneTime: readonly string[];
   readonly oneTimeMenuSort: string;
+  readonly oneTimeMenuSortCompletedFirst: boolean;
   readonly tieredMenuSort: string;
   readonly sync: Record<string, number>;
   readonly totem: HypixelPlayerAchievementsTotem;
@@ -129,7 +131,9 @@ export interface HypixelPlayerPets {
   readonly currentPet: string;
   readonly favorites: string;
   readonly autoSpawn: boolean;
+  readonly active: boolean;
   readonly lastJourneyAt: Date | null;
+  readonly lastUpdatedAt: Date | null;
   readonly consumables: HypixelPlayerPetConsumables;
   readonly owned: readonly HypixelPlayerPet[];
 }
@@ -143,6 +147,7 @@ export interface HypixelPlayerCosmetics {
   readonly selectedParticlePack: string;
   readonly clickEffect: string;
   readonly cloak: string;
+  readonly customCloakBase64: string;
   readonly emote: string;
   readonly disguise: string;
   readonly transformation: string;
@@ -150,11 +155,14 @@ export interface HypixelPlayerCosmetics {
   readonly outfit: Record<string, string>;
   readonly boxesConvertedToday: number;
   readonly firstBoxConvertedAt: Date | null;
+  readonly boxesCraftedToday: number;
+  readonly firstBoxCraftedAt: Date | null;
   readonly packages: readonly string[];
   readonly pets: HypixelPlayerPets;
 }
 
 export interface HypixelPlayerRankPurchase {
+  readonly noneAt: Date | null;
   readonly vipAt: Date | null;
   readonly vipPlusAt: Date | null;
   readonly mvpAt: Date | null;
@@ -232,6 +240,8 @@ export interface HypixelPlayerQuestCompletion {
 
 export interface HypixelPlayerQuest {
   readonly name: string;
+  readonly startedAt: Date | null;
+  readonly objectives: Record<string, number>;
   readonly completions: readonly HypixelPlayerQuestCompletion[];
 }
 
@@ -294,6 +304,20 @@ export interface HypixelPlayerAnniversary {
   readonly npcVisited2020: readonly number[];
 }
 
+export interface HypixelPlayerSpectatorSettings {
+  readonly invisible: boolean;
+  readonly firstPerson: boolean;
+  readonly alwaysFlying: boolean;
+  readonly autoTeleport: boolean;
+}
+
+export interface HypixelPlayerKits {
+  readonly kitShopSorting: {
+    readonly ownedFirst: boolean;
+    readonly currentSort: string;
+  };
+}
+
 export interface HypixelPlayerLeveling {
   readonly claimedRewards: readonly number[];
 }
@@ -334,6 +358,22 @@ export interface HypixelPlayerFlashingSale {
   readonly lastPopupAt: Date | null;
 }
 
+export interface HypixelPlayerFlashingNews {
+  readonly opens: number;
+  readonly poppedUp: number;
+  readonly popup: readonly string[];
+}
+
+export interface HypixelPlayerSkin {
+  readonly timeoutStartAt: Date | null;
+  readonly value: string;
+}
+
+export interface HypixelPlayerPlotResets {
+  readonly at: Date | null;
+  readonly uuid: string;
+}
+
 export interface HypixelPlayerCachedSuperstarMonths {
   readonly value: number;
   readonly lastUpdatedAt: Date | null;
@@ -361,6 +401,7 @@ export interface HypixelPlayer {
   readonly networkExp: number;
   readonly karma: number;
   readonly language: string;
+  readonly legacyLanguage: string;
   readonly channel: string;
   readonly networkUpdateBook: string;
   readonly mostRecentMinecraftVersion: number;
@@ -400,17 +441,23 @@ export interface HypixelPlayer {
   readonly claimedPotatoBasketAt: Date | null;
   readonly claimedPotatoTalismanAt: Date | null;
   readonly claimedSoloBank: Record<string, number>;
+  readonly claimedCoopBankAt: Record<string, Date | null>;
   readonly skyBlockFreeCookieAt: Date | null;
   readonly lastMapVoteAt: Date | null;
+  readonly watchdogBlockedAt: Date | null;
   readonly flashingSale: HypixelPlayerFlashingSale;
+  readonly flashingNews: HypixelPlayerFlashingNews;
+  readonly skin: HypixelPlayerSkin;
   readonly challenges: Record<string, Record<string, number>>;
   readonly compassStats: Record<string, Record<string, number>>;
   readonly voting: Record<string, number>;
   readonly leveling: HypixelPlayerLeveling;
   readonly dailyTwoKExpAt: Date | null;
+  readonly weeklyBoosterAt: Date | null;
   readonly anniversary: HypixelPlayerAnniversary;
   readonly cooldowns: HypixelPlayerCooldowns;
-  readonly xmas2019: Record<string, boolean>;
+  readonly commandCooldowns: Record<string, Record<string, Date | null>>;
+  readonly christmasPresents: Record<string, boolean>;
   readonly achievements: HypixelPlayerAchievements;
   readonly cosmetics: HypixelPlayerCosmetics;
   readonly rankPurchase: HypixelPlayerRankPurchase;
@@ -426,6 +473,41 @@ export interface HypixelPlayer {
   readonly tourney: HypixelPlayerTourney;
   readonly fireworkStorage: readonly HypixelPlayerFirework[];
   readonly friendRequests: readonly string[];
+  readonly friendRequestsBlocked: readonly string[];
+  readonly spectatorSettings: HypixelPlayerSpectatorSettings;
+  readonly kits: HypixelPlayerKits;
+  readonly currentHat: string;
+  readonly currentIp: string;
+  readonly todo: string;
+  readonly guildNotifications: boolean;
+  readonly autoDetectLanguage: boolean;
+  readonly adventureTester: boolean;
+  readonly disableSendAll: boolean;
+  readonly sendCerberusMessages: boolean;
+  readonly friendInvisible: boolean;
+  readonly giveDjFeather: boolean;
+  readonly hasTheHotPotato: boolean;
+  readonly notifiedOfStuff: boolean;
+  readonly reverted: boolean;
+  readonly showTntRunActionbarInfo: boolean;
+  readonly enableFireFlurry: boolean;
+  readonly santaFinished: boolean;
+  readonly snowballFightIntro2019: boolean;
+  readonly storeCredit: number;
+  readonly multiTunnel: readonly string[];
+  readonly plotResets: HypixelPlayerPlotResets;
+  readonly pp: string;
+  readonly collectiblesMenuVisibilitySort: string;
+  readonly oneTimeAchievementMenuSortCompletionSort: string;
+  readonly anniversaryBingoCard: Record<string, readonly string[]>;
+  readonly anniversaryNpcVisited: Record<string, readonly number[]>;
+  readonly anniversaryNpcProgress: Record<string, unknown>;
+  readonly upcomingLanguageReleases: Record<string, { logins: number }>;
+  readonly aprilFoolsClicked: Record<string, readonly string[]>;
+  readonly tournamentRewards: Record<string, string>;
+  readonly redisBackups: Record<string, unknown>;
+  readonly blitzKitLevels: Record<string, number>;
+  readonly legacyRootStats: Record<string, number>;
   readonly stats: HypixelPlayerStats;
 }
 
@@ -535,9 +617,14 @@ function parseAchievements(
       num(raw, "achievementPoints"),
     rewards,
     tracking: stringList(raw.achievementTracking),
+    trackingHideMessages: bool(raw, "achievementTrackingHideMessages"),
     tiered: numberMap(obj(raw, "achievements")),
     oneTime: stringList(raw.achievementsOneTime),
     oneTimeMenuSort: str(raw, "onetime_achievement_menu_sort"),
+    oneTimeMenuSortCompletedFirst: bool(
+      raw,
+      "onetime_achievement_menu_sort_completed_first",
+    ),
     tieredMenuSort: str(raw, "tiered_achievement_menu_sort"),
     sync: numberMap(obj(raw, "achievementSync")),
     totem: {
@@ -586,10 +673,9 @@ function parsePetConsumables(
 }
 
 function parsePet(
-  packageName: string,
+  name: string,
   raw: Record<string, unknown>,
 ): HypixelPlayerPet {
-  const name = packageName.replace("pet_", "");
   const key = name.toUpperCase();
   const stats = obj(obj(raw, "petStats"), key);
   const hunger = obj(stats, "HUNGER");
@@ -610,6 +696,12 @@ function parsePet(
 
 function parseCosmetics(raw: Record<string, unknown>): HypixelPlayerCosmetics {
   const packages = stringList(obj(raw, "vanityMeta").packages);
+  const petNames = new Set([
+    ...packages
+      .filter((entry) => entry.startsWith("pet_"))
+      .map((entry) => entry.replace("pet_", "")),
+    ...Object.keys(obj(raw, "petStats")).map((key) => key.toLowerCase()),
+  ]);
   return {
     menuSort: str(raw, "collectibles_menu_sort"),
     rankPlusColor: str(raw, "rankPlusColor"),
@@ -619,6 +711,7 @@ function parseCosmetics(raw: Record<string, unknown>): HypixelPlayerCosmetics {
     selectedParticlePack: str(raw, "particlePack"),
     clickEffect: str(raw, "currentClickEffect"),
     cloak: str(raw, "currentCloak"),
+    customCloakBase64: str(raw, "customCloakBase64"),
     emote: str(raw, "currentEmote"),
     disguise: str(raw, "disguise"),
     transformation: str(raw, "transformation"),
@@ -626,16 +719,18 @@ function parseCosmetics(raw: Record<string, unknown>): HypixelPlayerCosmetics {
     outfit: stringMap(obj(raw, "outfit")),
     boxesConvertedToday: num(raw, "vanityConvertedBoxToday"),
     firstBoxConvertedAt: date(raw, "vanityFirstConvertedBox"),
+    boxesCraftedToday: num(raw, "vanityCraftedBoxToday"),
+    firstBoxCraftedAt: date(raw, "vanityFirstCraftedBox"),
     packages,
     pets: {
       currentPet: str(raw, "currentPet"),
       favorites: str(raw, "vanityFavorites"),
       autoSpawn: bool(raw, "auto_spawn_pet"),
+      active: bool(raw, "petActive"),
       lastJourneyAt: date(raw, "petJourneyTimestamp"),
+      lastUpdatedAt: date(raw, "petUpdate"),
       consumables: parsePetConsumables(obj(raw, "petConsumables")),
-      owned: packages
-        .filter((entry) => entry.startsWith("pet_"))
-        .map((entry) => parsePet(entry, raw)),
+      owned: [...petNames].map((name) => parsePet(name, raw)),
     },
   };
 }
@@ -724,9 +819,13 @@ function parseQuests(
   source: Record<string, unknown>,
 ): readonly HypixelPlayerQuest[] {
   return Object.keys(source).map((name) => {
-    const completions = obj(source, name).completions;
+    const quest = obj(source, name);
+    const active = obj(quest, "active");
+    const completions = quest.completions;
     return {
       name,
+      startedAt: date(active, "started"),
+      objectives: numberMap(obj(active, "objectives")),
       completions: Array.isArray(completions)
         ? completions.map((entry) => ({
             completedAt: dateFrom(
@@ -745,7 +844,11 @@ function parseParkour(
 ): readonly HypixelPlayerParkour[] {
   const completions = obj(raw, "parkourCompletions");
   const checkpoints = obj(raw, "parkourCheckpointBests");
-  return Object.keys(completions).map((location) => {
+  const locations = new Set([
+    ...Object.keys(completions),
+    ...Object.keys(checkpoints),
+  ]);
+  return [...locations].map((location) => {
     const runs = completions[location];
     const first =
       Array.isArray(runs) && typeof runs[0] === "object" && runs[0] !== null
@@ -922,14 +1025,209 @@ function parseSoloBank(raw: Record<string, unknown>): Record<string, number> {
   return result;
 }
 
-function parseXmas2019(raw: Record<string, unknown>): Record<string, boolean> {
-  const result: Record<string, boolean> = {};
+function parseCoopBank(
+  raw: Record<string, unknown>,
+): Record<string, Date | null> {
+  const result: Record<string, Date | null> = {};
   for (const key of Object.keys(raw)) {
-    if (key.startsWith("xmas2019_") && typeof raw[key] === "boolean") {
-      result[key.replace("xmas2019_", "")] = raw[key];
+    if (key.startsWith("claimed_coop_bank_")) {
+      result[key.replace("claimed_coop_bank_", "")] = date(raw, key);
     }
   }
   return result;
+}
+
+function parseCommandCooldowns(
+  source: Record<string, unknown>,
+): Record<string, Record<string, Date | null>> {
+  const result: Record<string, Record<string, Date | null>> = {};
+  for (const key of Object.keys(source)) {
+    const group = obj(source, key);
+    const entry: Record<string, Date | null> = {};
+    for (const name of Object.keys(group)) {
+      entry[name] = date(group, name);
+    }
+    result[key] = entry;
+  }
+  return result;
+}
+
+const APRIL_FOOLS_CLICKED_KEY = /^aprilFools(?:Player|Staff)Clicked_/;
+
+function parseAprilFoolsClicked(
+  raw: Record<string, unknown>,
+): Record<string, readonly string[]> {
+  const result: Record<string, readonly string[]> = {};
+  for (const key of Object.keys(raw)) {
+    if (APRIL_FOOLS_CLICKED_KEY.test(key)) {
+      result[key] = stringList(raw[key]);
+    }
+  }
+  return result;
+}
+
+function parseTournamentRewards(
+  raw: Record<string, unknown>,
+): Record<string, string> {
+  const result: Record<string, string> = {};
+  for (const key of Object.keys(raw)) {
+    const value = raw[key];
+    if (key.startsWith("tournamentReward_") && typeof value === "string") {
+      result[key.replace("tournamentReward_", "")] = value;
+    }
+  }
+  return result;
+}
+
+const REDIS_BACKUP_KEY = /^redisBackup\d*$/;
+
+function parseRedisBackups(
+  raw: Record<string, unknown>,
+): Record<string, unknown> {
+  const result: Record<string, unknown> = {};
+  for (const key of Object.keys(raw)) {
+    if (REDIS_BACKUP_KEY.test(key)) {
+      result[key] = raw[key];
+    }
+  }
+  return result;
+}
+
+const BLITZ_ROOT_KIT_KEY = /^(?:insane|normal)_[a-z_]+$/;
+
+function parseBlitzKitLevels(
+  raw: Record<string, unknown>,
+): Record<string, number> {
+  const result: Record<string, number> = {};
+  for (const key of Object.keys(raw)) {
+    const value = raw[key];
+    if (BLITZ_ROOT_KIT_KEY.test(key) && typeof value === "number") {
+      result[key] = value;
+    }
+  }
+  return result;
+}
+
+const LEGACY_ROOT_STAT_KEYS = [
+  "coins",
+  "deaths",
+  "forcefieldTime",
+  "kills",
+  "killstreaks",
+  "monthly_kills_b",
+  "shots_fired",
+  "weekly_kills_a",
+  "wins",
+] as const;
+
+function parseLegacyRootStats(
+  raw: Record<string, unknown>,
+): Record<string, number> {
+  const result: Record<string, number> = {};
+  for (const key of LEGACY_ROOT_STAT_KEYS) {
+    const value = raw[key];
+    if (typeof value === "number") {
+      result[key] = value;
+    }
+  }
+  return result;
+}
+
+const CHRISTMAS_PRESENT_KEY = /^xmas\d{4}_/;
+
+function parseChristmasPresents(
+  raw: Record<string, unknown>,
+): Record<string, boolean> {
+  const result: Record<string, boolean> = {};
+  for (const key of Object.keys(raw)) {
+    if (CHRISTMAS_PRESENT_KEY.test(key) && typeof raw[key] === "boolean") {
+      result[key.replace("xmas", "")] = raw[key];
+    }
+  }
+  return result;
+}
+
+const ANNIVERSARY_BINGO_CELLS = [
+  "Rowone",
+  "Rowtwo",
+  "Rowthree",
+  "Rowfour",
+  "Rowfive",
+  "Columnone",
+  "Columntwo",
+  "Columnthree",
+  "Columnfour",
+  "Columnfive",
+  "Diagonalone",
+  "Diagonaltwo",
+  "blackOut",
+] as const;
+
+function parseAnniversaryBingoCard(
+  raw: Record<string, unknown>,
+): Record<string, readonly string[]> {
+  const result: Record<string, readonly string[]> = {};
+  for (const key of ANNIVERSARY_BINGO_CELLS) {
+    if (Array.isArray(raw[key])) {
+      result[key] = stringList(raw[key]);
+    }
+  }
+  return result;
+}
+
+const ANNIVERSARY_NPC_VISITED_KEY = /^anniversaryNPCVisited(\d{4})$/;
+const ANNIVERSARY_NPC_PROGRESS_KEY = /^anniversaryNPCProgress(\d{4})$/;
+
+function parseAnniversaryNpcVisited(
+  raw: Record<string, unknown>,
+): Record<string, readonly number[]> {
+  const result: Record<string, readonly number[]> = {};
+  for (const key of Object.keys(raw)) {
+    const match = ANNIVERSARY_NPC_VISITED_KEY.exec(key);
+    if (match) {
+      result[match[1]] = numberList(raw[key]);
+    }
+  }
+  return result;
+}
+
+function parseAnniversaryNpcProgress(
+  raw: Record<string, unknown>,
+): Record<string, unknown> {
+  const result: Record<string, unknown> = {};
+  for (const key of Object.keys(raw)) {
+    const match = ANNIVERSARY_NPC_PROGRESS_KEY.exec(key);
+    if (match) {
+      result[match[1]] = raw[key];
+    }
+  }
+  return result;
+}
+
+const UPCOMING_LANGUAGE_KEY = "upcomingLanguageRelease_";
+
+function parseUpcomingLanguageReleases(
+  raw: Record<string, unknown>,
+): Record<string, { logins: number }> {
+  const result: Record<string, { logins: number }> = {};
+  for (const key of Object.keys(raw)) {
+    if (key.startsWith(UPCOMING_LANGUAGE_KEY)) {
+      result[key.replace(UPCOMING_LANGUAGE_KEY, "")] = {
+        logins: num(obj(raw, key), "logins"),
+      };
+    }
+  }
+  return result;
+}
+
+function parseKits(raw: Record<string, unknown>): HypixelPlayerKits {
+  const kitShopSorting = obj(obj(raw, "kits"), "kitShopSorting");
+  return {
+    kitShopSorting: {
+      ownedFirst: bool(kitShopSorting, "ownedFirst"),
+      currentSort: str(kitShopSorting, "currentSort"),
+    },
+  };
 }
 
 const COOLDOWN_KEY = /Cooldowns2?$/;
@@ -1002,6 +1300,7 @@ export function parsePlayer(raw: Record<string, unknown>): HypixelPlayer {
     networkExp: num(raw, "networkExp"),
     karma: num(raw, "karma"),
     language: str(raw, "userLanguage") || "ENGLISH",
+    legacyLanguage: str(raw, "language"),
     channel: str(raw, "channel") || "ALL",
     networkUpdateBook: str(raw, "network_update_book"),
     mostRecentMinecraftVersion: num(raw, "mostRecentMinecraftVersion"),
@@ -1040,7 +1339,9 @@ export function parsePlayer(raw: Record<string, unknown>): HypixelPlayer {
     eulaCoins: bool(raw, "eulaCoins"),
     seeRequests: bool(raw, "seeRequests"),
     testPass: bool(raw, "testPass"),
-    questAutoActivate: bool(obj(raw, "questSettings"), "autoActivate"),
+    questAutoActivate:
+      bool(obj(raw, "questSettings"), "autoActivate") ||
+      bool(obj(raw, "quest"), "autoActivate"),
     firstLoginAt: date(raw, "firstLogin"),
     lastLoginAt: date(raw, "lastLogin"),
     lastLogoutAt: date(raw, "lastLogout"),
@@ -1051,13 +1352,24 @@ export function parsePlayer(raw: Record<string, unknown>): HypixelPlayer {
     claimedPotatoBasketAt: date(raw, "claimed_potato_basket"),
     claimedPotatoTalismanAt: date(raw, "claimed_potato_talisman"),
     claimedSoloBank: parseSoloBank(raw),
+    claimedCoopBankAt: parseCoopBank(raw),
     skyBlockFreeCookieAt: date(raw, "skyblock_free_cookie"),
     lastMapVoteAt: date(raw, "lastMapVote"),
+    watchdogBlockedAt: date(raw, "watchdogBlockTimestamp"),
     flashingSale: {
       clicks: num(raw, "flashingSaleClicks"),
       opens: num(raw, "flashingSaleOpens"),
       poppedUp: num(raw, "flashingSalePoppedUp"),
       lastPopupAt: date(raw, "flashingSalePopup"),
+    },
+    flashingNews: {
+      opens: num(raw, "flashingNewsOpens"),
+      poppedUp: num(raw, "flashingNewsPoppedUp"),
+      popup: stringList(raw.flashingNewsPopup),
+    },
+    skin: {
+      timeoutStartAt: date(obj(raw, "skin"), "timeoutStart"),
+      value: str(obj(raw, "skin"), "value"),
     },
     challenges: nestedNumberMap(obj(raw, "challenges")),
     compassStats: nestedNumberMap(obj(raw, "compassStats")),
@@ -1066,15 +1378,18 @@ export function parsePlayer(raw: Record<string, unknown>): HypixelPlayer {
       claimedRewards: numberList(obj(raw, "leveling").claimedRewards),
     },
     dailyTwoKExpAt: date(obj(raw, "eugene"), "dailyTwoKExp"),
+    weeklyBoosterAt: date(obj(raw, "eugene"), "weekly_booster"),
     anniversary: {
       npcProgress2020: num(raw, "anniversaryNPCProgress2020"),
       npcVisited2020: numberList(raw.anniversaryNPCVisited2020),
     },
     cooldowns: parseCooldowns(raw),
-    xmas2019: parseXmas2019(raw),
+    commandCooldowns: parseCommandCooldowns(obj(raw, "cooldowns")),
+    christmasPresents: parseChristmasPresents(raw),
     achievements: parseAchievements(raw),
     cosmetics: parseCosmetics(raw),
     rankPurchase: {
+      noneAt: date(raw, "levelUp_NONE"),
       vipAt: date(raw, "levelUp_VIP"),
       vipPlusAt: date(raw, "levelUp_VIP_PLUS"),
       mvpAt: date(raw, "levelUp_MVP"),
@@ -1092,7 +1407,55 @@ export function parsePlayer(raw: Record<string, unknown>): HypixelPlayer {
     tourney: parseTourney(obj(raw, "tourney")),
     fireworkStorage: parseFireworks(raw.fireworkStorage),
     friendRequests: stringList(raw.friendRequests),
+    friendRequestsBlocked: stringList(raw.friendBlocksUuid),
+    spectatorSettings: {
+      invisible: bool(raw, "spectators_invisible"),
+      firstPerson: bool(raw, "spec_first_person"),
+      alwaysFlying: bool(raw, "spec_always_flying"),
+      autoTeleport: bool(raw, "spec_auto_teleport"),
+    },
+    kits: parseKits(raw),
+    currentHat: str(raw, "currentHat"),
+    currentIp: str(raw, "currentIp"),
+    todo: str(raw, "TODO"),
+    guildNotifications: bool(raw, "guildNotifications"),
+    autoDetectLanguage: bool(raw, "autoDetectLanguage"),
+    adventureTester: bool(raw, "adventureTester"),
+    disableSendAll: bool(raw, "disableSendAll"),
+    sendCerberusMessages: bool(raw, "sendCerberusMessages"),
+    friendInvisible: bool(raw, "friendInvisible"),
+    giveDjFeather: bool(raw, "give_dj_feather"),
+    hasTheHotPotato: bool(raw, "hasTheHotPotato"),
+    notifiedOfStuff: bool(raw, "notifiedOfStuff"),
+    reverted: bool(raw, "reverted"),
+    showTntRunActionbarInfo: bool(raw, "show_tntrun_actionbar_info"),
+    enableFireFlurry: bool(raw, "enable_fire_flurry"),
+    santaFinished: bool(raw, "SANTA_FINISHED"),
+    snowballFightIntro2019: bool(raw, "snowball_fight_intro_2019"),
+    storeCredit: num(raw, "storeCredit"),
+    multiTunnel: stringList(raw.multiTunnel),
+    plotResets: {
+      at: date(obj(raw, "plotResets"), "time"),
+      uuid: str(obj(raw, "plotResets"), "uuid"),
+    },
+    pp: str(raw, "pp"),
+    collectiblesMenuVisibilitySort: str(
+      raw,
+      "collectibles_menu_visibility_sort",
+    ),
+    oneTimeAchievementMenuSortCompletionSort: str(
+      raw,
+      "onetime_achievement_menu_sort_completion_sort",
+    ),
+    anniversaryBingoCard: parseAnniversaryBingoCard(raw),
+    anniversaryNpcVisited: parseAnniversaryNpcVisited(raw),
+    anniversaryNpcProgress: parseAnniversaryNpcProgress(raw),
+    upcomingLanguageReleases: parseUpcomingLanguageReleases(raw),
+    aprilFoolsClicked: parseAprilFoolsClicked(raw),
+    tournamentRewards: parseTournamentRewards(raw),
+    redisBackups: parseRedisBackups(raw),
+    blitzKitLevels: parseBlitzKitLevels(raw),
+    legacyRootStats: parseLegacyRootStats(raw),
     stats: parseStats(obj(raw, "stats"), obj(raw, "achievements")),
   };
 }
-
