@@ -56,6 +56,16 @@ function stringArray(parent: Record<string, unknown>, key: string): string[] {
   return value.filter((entry): entry is string => typeof entry === "string");
 }
 
+function itemBytesString(value: unknown): string {
+  if (typeof value === "string") {
+    return value;
+  }
+  if (typeof value === "object" && value !== null && !Array.isArray(value)) {
+    return str(value as Record<string, unknown>, "data");
+  }
+  return "";
+}
+
 function parseBid(raw: Record<string, unknown>): SkyBlockAuctionBid {
   return {
     auctionId: str(raw, "auction_id"),
@@ -82,7 +92,7 @@ function parseBids(value: unknown): SkyBlockAuctionBid[] {
 
 /** Parses a SkyBlock auction (`/skyblock/auction`) into a typed object. */
 export function parseAuction(raw: Record<string, unknown>): SkyBlockAuction {
-  const itemBytes = str(raw, "item_bytes");
+  const itemBytes = itemBytesString(raw.item_bytes);
   return {
     id: str(raw, "_id"),
     uuid: str(raw, "uuid") || str(raw, "auction_id"),
@@ -138,4 +148,3 @@ export function parseAuctionsPage(
     auctions: parseAuctionList(Array.isArray(raw.auctions) ? raw.auctions : []),
   };
 }
-
