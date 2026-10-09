@@ -208,6 +208,7 @@ export interface BedWarsSettings {
   readonly slumberItemNotification: string;
   readonly slumberWalletFull: boolean;
   readonly trapRemoval: boolean;
+  readonly autoEquipPrestiges: boolean;
 }
 
 export interface BedWarsPracticeMode {
@@ -693,20 +694,56 @@ const BEDWARS_BOON = {
 
 const BEDWARS_DREAMFEAST = {
   appetizerBoon: "appetizer_boon",
+  challengeAnchor: "challenge_anchor",
+  challengeBedsAndBloodlust: "challenge_beds_and_bloodlust",
+  challengeBegAndBarter: "challenge_beg_and_barter",
+  challengeBlockRepellentBeds: "challenge_block_repellent_beds",
+  challengeHalvedAndDoubled: "challenge_halved_and_doubled",
+  challengeMidnight: "challenge_midnight",
+  challengeNoDreaming: "challenge_no_dreaming",
+  challengeQuickMaths: "challenge_quick_maths",
   challengeWoolWarrior: "challenge_wool_warrior",
+  dessertBoon: "dessert_boon",
   dreamOfAnimals: "dream_of_animals",
+  dreamOfKillMessages: "dream_of_kill_messages",
+  dreamOfPrestige: "dream_of_prestige",
+  dreamOfPrestigeBrackets: "dream_of_prestige_brackets",
+  dreamOfPrestigeFormatting: "dream_of_prestige_formatting",
   dreamOfPrestigeStars: "dream_of_prestige_stars",
   firstCourseBoon: "first_course_boon",
+  firstDreamOfShopkeeperSkins: "first_dream_of_shopkeeper_skins",
   firstDreamOfWoodSkins: "first_dream_of_wood_skins",
   firstNightmareOfChallenges: "first_nightmare_of_challenges",
+  fourthCourseBoon: "fourth_course_boon",
+  goldenStartingSword: "golden_starting_sword",
   killmessagesGlorious: "killmessages_glorious",
+  killmessagesLucid: "killmessages_lucid",
   npcskinCluckStack: "npcskin_cluck_stack",
+  npcskinCowPyramid: "npcskin_cow_pyramid",
+  secondCourseBoon: "second_course_boon",
+  secondDreamOfShopkeeperSkins: "second_dream_of_shopkeeper_skins",
+  secondDreamOfWoodSkins: "second_dream_of_wood_skins",
+  secondNightmareOfChallenges: "second_nightmare_of_challenges",
+  starFourPointed: "star_four_pointed",
+  starHollow: "star_hollow",
+  teamColorSelector: "team_color_selector",
+  thirdCourseBoon: "third_course_boon",
+  thirdNightmareOfChallenges: "third_nightmare_of_challenges",
+  toggleBoldNumbers: "toggle_bold_numbers",
+  toggleRainbowKillMessages: "toggle_rainbow_kill_messages",
+  victorydanceChickenApocalypse: "victorydance_chicken_apocalypse",
   woodSkinAcaciaLog: "woodSkin_acacia_log",
   woodSkinBirchLog: "woodSkin_birch_log",
   woodSkinDarkOakLog: "woodSkin_dark_oak_log",
   woodSkinJungleLog: "woodSkin_jungle_log",
   woodSkinOakLog: "woodSkin_oak_log",
   woodSkinSpruceLog: "woodSkin_spruce_log",
+} as const;
+
+const BEDWARS_DREAMFEAST_TOGGLES = {
+  boldNumbers: "toggle_bold_numbers",
+  goldenStartingSword: "golden_starting_sword",
+  rainbowKillMessages: "toggle_rainbow_kill_messages",
 } as const;
 
 const BEDWARS_FEASTFOOD_COOKED = {
@@ -725,9 +762,14 @@ const HALLOWEEN_PUMPKIN_REWARD_TIERS = {
 } as const;
 
 export type BedWarsBoon = Readonly<Record<keyof typeof BEDWARS_BOON, boolean>>;
+
 export type BedWarsDreamfeast = Readonly<
   Record<keyof typeof BEDWARS_DREAMFEAST, boolean>
->;
+> & {
+  readonly toggles: Readonly<
+    Record<keyof typeof BEDWARS_DREAMFEAST_TOGGLES, boolean>
+  >;
+};
 
 export interface BedWarsFeastfood {
   readonly cooked: Readonly<
@@ -802,6 +844,7 @@ export interface BedWarsStats {
   readonly selectedUltimate: string;
   readonly activePrestigeScheme: string;
   readonly activeStar: string;
+  readonly activePrestigeBracket: string;
   readonly dataVersion: number;
   readonly pianistEnabled: boolean;
   readonly votedSnowman: boolean;
@@ -1031,6 +1074,14 @@ function parsePrivateGameSettings(
   };
 }
 
+function parseDreamfeast(raw: Record<string, unknown>): BedWarsDreamfeast {
+  const dreamfeast = obj(raw, "dreamfeast");
+  return {
+    ...readFlags(dreamfeast, BEDWARS_DREAMFEAST),
+    toggles: readFlags(obj(dreamfeast, "toggles"), BEDWARS_DREAMFEAST_TOGGLES),
+  };
+}
+
 function parseSettings(raw: Record<string, unknown>): BedWarsSettings {
   const settings = obj(raw, "settings");
   return {
@@ -1038,6 +1089,7 @@ function parseSettings(raw: Record<string, unknown>): BedWarsSettings {
     slumberItemNotification: str(settings, "slumberItemNotification"),
     slumberWalletFull: bool(settings, "slumberWalletFull"),
     trapRemoval: bool(settings, "trapRemoval"),
+    autoEquipPrestiges: bool(settings, "auto_equip_prestiges"),
   };
 }
 
@@ -1279,6 +1331,7 @@ export function parseBedWars(
     selectedUltimate: str(bw, "selected_ultimate"),
     activePrestigeScheme: str(bw, "active_prestige_scheme"),
     activeStar: str(bw, "active_star"),
+    activePrestigeBracket: str(bw, "active_prestige_bracket"),
     dataVersion: num(bw, "data_version"),
     pianistEnabled: bool(bw, "pianistEnabled"),
     votedSnowman: bool(bw, "voted_snowman"),
@@ -1300,7 +1353,7 @@ export function parseBedWars(
     favoriteCosmetics: parseFavoriteCosmetics(bw),
     figurines: parseFigurines(bw),
     boon: readFlags(obj(bw, "boon"), BEDWARS_BOON),
-    dreamfeast: readFlags(obj(bw, "dreamfeast"), BEDWARS_DREAMFEAST),
+    dreamfeast: parseDreamfeast(bw),
     feastfood: parseFeastfood(bw),
     halloween: parseHalloween(bw),
     leaderboardSettings: parseLeaderboardSettings(bw),
