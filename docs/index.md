@@ -28,7 +28,7 @@ features:
     details: BedWars, SkyWars, Duels, Arcade, and sixteen more, each with its complete typed stat tree read straight from the raw API.
   - icon: 🔒
     title: Strict-raw, zero computation
-    details: The parsers mirror the raw API field-for-field. No ratios, no levels-from-xp, no derived totals. Computed values belong in a wrapper built on top of this one.
+    details: The parsers mirror the raw API field-for-field. No ratios, no levels-from-xp, no derived totals. Computed values belong in a wrapper built on top of this one, such as @breezil/hypixel-api.
   - icon: 🗜️
     title: Decoded NBT
     details: Base64 plus gzipped item NBT is decoded and typed, not left as an opaque blob.

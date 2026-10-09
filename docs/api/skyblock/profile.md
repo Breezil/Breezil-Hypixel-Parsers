@@ -224,7 +224,7 @@ interface SkyBlockInventory {
 
 ### SkyBlockItemBytes
 
-A raw, undecoded item blob — kept as a string rather than decoded. Used where the API stores arrays of item bytes (e.g. toolkits).
+A raw, undecoded item blob, kept as a string rather than decoded. Used where the API stores arrays of item bytes (e.g. toolkits).
 
 ```ts
 interface SkyBlockItemBytes {
