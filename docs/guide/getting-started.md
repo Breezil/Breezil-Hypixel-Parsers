@@ -16,7 +16,7 @@ These parsers are a **typed mirror of the raw Hypixel API**. They do **zero comp
 
 - They read what the API returns and convert it to a typed object, field-for-field.
 - They never derive values. There are no win/loss ratios, no levels-from-xp, no aggregated totals, no computed ranks.
-- Derived and computed values belong in a wrapper layer built on top of this one. This package is the motor; the math lives upstream.
+- Derived and computed values belong in a wrapper layer built on top of this one, such as [`@breezil/hypixel-api`](https://github.com/Breezil/Breezil-Hypixel-Api). This package is the motor; the math lives upstream.
 
 In exchange you get full depth (every field the API returns is typed, including the deep SkyBlock sub-trees and decoded item NBT) and predictable shapes: missing fields resolve to typed defaults (`0`, `""`, `false`, `null`, `[]`, `{}`), never `undefined`.
 

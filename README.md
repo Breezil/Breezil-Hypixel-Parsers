@@ -49,7 +49,7 @@
 
 Breezil-Hypixel-Parsers is a fully open-source TypeScript **library** that turns raw Hypixel API JSON into rich, readonly, fully-typed objects. It gives you one focused parser per domain (player, guild, status, the whole SkyBlock tree, and every Hypixel game mode) instead of hand-mapping deeply nested response shapes yourself.
 
-The parsers are pure: no network calls, no config, no side effects. You hand them the raw JSON, you get a clean typed object back. That makes them easy to test, easy to reason about, and safe to drop anywhere. They power [`@breezil/hypixel-api`](https://github.com/Breezil), but they work standalone on any Hypixel JSON you already have.
+The parsers are pure: no network calls, no config, no side effects. You hand them the raw JSON, you get a clean typed object back. That makes them easy to test, easy to reason about, and safe to drop anywhere. They power [`@breezil/hypixel-api`](https://www.npmjs.com/package/@breezil/hypixel-api) ([repo](https://github.com/Breezil/Breezil-Hypixel-Api)), but they work standalone on any Hypixel JSON you already have.
 
 > Part of [**Breezil**](https://github.com/Breezil), an open-source org building clean,
 > well-documented projects, tools, and bots. No closed blobs, no sketchy builds. Every line

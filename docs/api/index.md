@@ -4,7 +4,7 @@ Every export is a pure function: raw Hypixel JSON in, a readonly fully-typed obj
 
 ## Design principles
 
-- **Strict-raw.** The parsers mirror the raw Hypixel API field-for-field and do zero computation. No ratios, no levels-from-xp, no derived totals, no aggregates. Computed and derived values belong in a wrapper layer built on top of this one.
+- **Strict-raw.** The parsers mirror the raw Hypixel API field-for-field and do zero computation. No ratios, no levels-from-xp, no derived totals, no aggregates. Computed and derived values belong in a wrapper layer built on top of this one, such as [`@breezil/hypixel-api`](https://github.com/Breezil/Breezil-Hypixel-Api).
 - **Full depth.** Every field the API returns is typed, including the deep SkyBlock sub-trees and decoded item NBT.
 - **Decoded NBT.** Base64 + gzipped item NBT is decoded and typed (see [NBT Decoding](/api/nbt)) rather than left as an opaque blob.
 - **Safe defaults.** Missing fields resolve to typed defaults: `0`, `""`, `false`, `null`, `[]`, or `{}`, never `undefined`. Game-mode blocks resolve to `null` when the player has never played them.
